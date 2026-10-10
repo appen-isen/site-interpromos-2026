@@ -1,0 +1,32 @@
+/*
+* Section d'import des polices
+*   Importe les polices depuis Google Fonts
+*/
+@import url('https://fonts.googleapis.com/css2?family=Climate+Crisis:YEAR@1979&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap');
+
+
+/*
+* Section appelé "Reset"
+*    Réinitialise les styles appliqués par défaut par le navigateur
+*    Appliqué à tous les éléments de la page
+*/
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Inter", sans-serif;
+}
+
+
+/*
+* Section de définition des variables CSS
+*    Définit des variables CSS pour les couleurs utilisable partout dans le code CSS
+*    Cela permet de changer facilement les couleurs du site et d'éviter les répétitions de code
+*
+*    Utilisation : var(--nom-de-la-variable)
+*    Exemple : color: var(--main);
+*
+*/
+:root {
+    --main: #D42F53;
+}
