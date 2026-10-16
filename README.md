@@ -15,14 +15,20 @@ Commencez par cloner le repository localement.
 git clone https://github.com/appen-isen/site-interpromos-2026.git
 ```
 
-Dans le dossier du projet, exécutez ensuite la commande suivante pour installer les dépendances.
+Dans le dossier du projet, exécutez ensuite les commandes suivantes pour installer les dépendances :
 ```
 npm install
+cd interpromos
+npm install
+cd ..
 ```
 
 ## Structure du projet
 
-Le projet utilise la bibliothèque Express.js (sur NodeJS) pour servir les fichiers du frontend et gérer les requêtes côté backend.
+Le projet est composé de deux parties :
+
+### Backend (Express.js)
+Le backend utilise la bibliothèque Express.js (sur NodeJS) pour servir les fichiers du frontend et gérer les requêtes API.
 - `pages/`, les différentes pages du site
 - `assets/`, les ressources utilisées par ces pages
  - `assets/css/`, plus spécifiquement les feuilles de style des pages
@@ -32,15 +38,41 @@ Le projet utilise la bibliothèque Express.js (sur NodeJS) pour servir les fichi
 - `index.js`, déploie le serveur et renvoie toutes les requêtes au bon endroit
  (les pages HTML `pages/` et les images, le CSS et JavaScript qui tourne côté client `assets/`) ainsi que la gestion des requêtes côté backend (`backend/`).
 
+### Frontend (Vite + React)
+Le frontend utilise Vite avec React et TypeScript pour une interface moderne et réactive.
+- `interpromos/src/`, le code source React
+- `interpromos/src/components/`, les composants React réutilisables
+- `interpromos/src/assets/`, les ressources (images, etc.)
+- `interpromos/vite.config.ts`, la configuration de Vite
+
 ## Lancer le projet
 
-Pour lancer le projet localement, vous pouvez utiliser la commande suivante
+### Backend uniquement
+Pour lancer le serveur backend (Express) :
 ```
 npm run dev
+# ou
+npm run dev:backend
 ```
-Le site devrait être disponible en local depuis l'adresse `http://localhost:3000` (ou sur un autre port si modifié).
-Vous pouvez arrêter le serveur en faisant `Ctrl` + `C` dans la console.
-Il faudra redémarrer le serveur à chaque fois que vous modifiez du code dans `backend/` et `index.js` pour voir les changements.
+Le backend sera disponible sur `http://localhost:3000`.
+
+### Frontend uniquement
+Pour lancer le serveur frontend (Vite + React) :
+```
+npm run dev:frontend
+```
+Le frontend sera disponible sur `http://localhost:5173` (ou un autre port si 5173 est déjà utilisé).
+
+### Backend et Frontend
+Vous pouvez lancer les deux serveurs dans deux terminaux différents :
+- Terminal 1 : `npm run dev` (backend)
+- Terminal 2 : `npm run dev:frontend` (frontend)
+
+Vous pouvez arrêter les serveurs en faisant `Ctrl` + `C` dans chaque console.
+
+> [!NOTE]
+> - Le backend doit être redémarré à chaque modification du code dans `backend/` et `index.js`.
+> - Le frontend avec Vite supporte le Hot Module Replacement (HMR) : les modifications sont appliquées automatiquement sans redémarrage.
 
 ## Contribuer au projet
 
