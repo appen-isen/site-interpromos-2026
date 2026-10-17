@@ -28,5 +28,151 @@
 *
 */
 :root {
-    --main: #D42F53;
+    background : linear-gradient(to bottom, #5D1326, #8A1937);
+}
+
+h1.sitetitle {
+    color: white;
+    text-align: left;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+img.logo_bds {
+    width: 100px;
+    height: 100px;
+    margin-left: 10px;
+    align-items: end;
+}
+
+.intro-container {
+    display: flex;
+    align-items: baseline; 
+    flex-wrap: wrap;
+}
+h2.h21 {
+    color: white;
+    text-align: left;
+}
+
+h2.inter {
+    font-weight: bolder;
+    color: white;
+}
+
+h2.h22 {
+    color: white;
+}
+
+div.actual_day {
+     background-color: #D42F53;
+     color: white;
+     font-weight: 700px;
+     width: 250px;
+     text-transform: uppercase;
+     border-top-left-radius: 25px;
+     border-top-right-radius: 25px;
+     width: 100%; /* Occupe toute la largeur disponible */
+     box-sizing: border-box;
+     text-align: center;
+     padding: 10px 25px;
+     font-weight: bolder;
+     font-style: italic;
+}
+
+#match_en_cours {
+     background-color: #52212b;
+     color: white;
+     font-weight: 700px;
+     margin-top: 25px;
+     width: 250px;
+     padding-top: 25px;
+     text-transform: uppercase;
+     width: 100%; /* Occupe toute la largeur disponible */
+     box-sizing: border-box;
+     text-align: center;
+     padding: 10px 25px;
+     font-weight: bolder;
+     font-style: italic;
+}
+
+div.live_match {
+    padding: 10px 25px;
+    padding-top: 25px;
+    margin-top: 25px;
+}
+
+span.number_live_matchs {
+    color: gray;
+    font-weight: lighter;
+    font-style: normal;
+}
+
+div.actual_football_matchs {
+    background-color: #5D1326; 
+    color: white;
+    font-weight: 700px;
+    margin-top: 25px;
+    width: 250px;
+    padding-top: 25px;
+    width: 100%; /* Occupe toute la largeur disponible */
+    box-sizing: border-box;
+    text-align: center;
+    padding: 10px 25px;
+}
+
+div.actual_badminton_matchs {
+    background-color: #5D1326; 
+    color: white;
+    font-weight: 700px;
+    margin-top: 25px;
+    width: 250px;
+    padding-top: 25px;
+    width: 100%; /* Occupe toute la largeur disponible */
+    box-sizing: border-box;
+    text-align: center;
+    padding: 10px 25px;
+}
+
+div.actual_beer_and_run_matchs {
+    background-color: #5D1326; 
+    color: white;
+    font-weight: 700px;
+    margin-top: 25px;
+    width: 250px;
+    padding-top: 25px;
+    width: 100%; /* Occupe toute la largeur disponible */
+    box-sizing: border-box;
+    text-align: center;
+    padding: 10px 25px;
+}
+
+
+
+.outro-container {
+    display: flex;
+    align-items: normal;
+    flex-wrap: wrap;
+}
+
+h2.all_matchs {
+    color: white;
+    text-align: left;
+    text-transform: uppercase;
+    font-style: italic;
+}
+
+h2.equipe_classments {
+    font-weight: bolder;
+    color: white;
+    text-align: left;
+    text-transform: uppercase;
+    font-style: italic;
+}
+
+h2.format_tournois {
+    color: white;
+    text-align: left;
+    text-transform: uppercase;
+    font-style: italic;
 }
