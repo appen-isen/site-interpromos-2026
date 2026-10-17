@@ -28,7 +28,19 @@
 *
 */
 :root {
-    background : linear-gradient(to bottom, #5D1326, #8A1937);
+    background: linear-gradient(115deg,#71132e 0%,#971b3a 45%,#c52349 100%);
+    min-height: 100vh;
+    width: 100%;
+    color: #ffffff;
+    font-family: sans-serif;
+    padding: 20px;
+}
+
+.header-top {
+    display: flex;
+    align-items: center;    /* Aligne verticalement le texte et le logo au centre */
+    justify-content: baseline; 
+    padding: 10px 2px;
 }
 
 h1.sitetitle {
@@ -39,10 +51,9 @@ h1.sitetitle {
 }
 
 img.logo_bds {
-    width: 100px;
-    height: 100px;
-    margin-left: 10px;
-    align-items: end;
+    width: 50px;
+    height: 50px;
+
 }
 
 .intro-container {
@@ -53,6 +64,7 @@ img.logo_bds {
 h2.h21 {
     color: white;
     text-align: left;
+    font-size: 15px;
 }
 
 h2.inter {
@@ -62,6 +74,7 @@ h2.inter {
 
 h2.h22 {
     color: white;
+    font-size: 15px;
 }
 
 div.actual_day {
@@ -149,6 +162,36 @@ div.actual_beer_and_run_matchs {
 
 
 
+#a_venir {
+     background-color: #52212b;
+     color: white;
+     font-weight: 700px;
+     margin-top: 25px;
+     width: 250px;
+     padding-top: 25px;
+     text-transform: uppercase;
+     width: 100%; /* Occupe toute la largeur disponible */
+     box-sizing: border-box;
+     text-align: center;
+     padding: 10px 25px;
+     font-weight: bolder;
+     font-style: italic;
+}
+
+div.a_venir {
+    padding: 10px 25px;
+    padding-top: 25px;
+    margin-top: 25px;
+}
+
+span.number_a_venir {
+    color: gray;
+    font-weight: lighter;
+    font-style: normal;
+}
+
+
+
 .outro-container {
     display: flex;
     align-items: normal;
@@ -175,4 +218,43 @@ h2.format_tournois {
     text-align: left;
     text-transform: uppercase;
     font-style: italic;
+}
+
+span.tournoi-badge {
+    text-align: center;
+    color: gray;
+}
+
+h3.team-name-1 {
+    text-align: left;
+    background-color: #c52349;
+    border-radius: 20px;
+    padding: 5px;
+    width: 35px;
+}
+
+h3.team-name-2 {
+    text-align: right;
+    background-color: #c52349;
+    border-radius: 20px;
+    padding: 5px;
+    width: 35px;
+}
+
+p.players-list-1 {
+    text-align: left;
+}
+
+p.players-list-2 {
+    text-align: right;
+}
+
+span.score_home-score {
+    font-weight: bolder;
+    font-size: 25px;
+}
+
+span.score_away-score {
+    font-weight: bolder;
+    font-size: 25px;
 }
