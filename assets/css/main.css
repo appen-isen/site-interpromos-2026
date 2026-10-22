@@ -434,3 +434,107 @@ button {
     --font-title: "Climate Crisis", sans-serif;
     --font-body: "Inter", sans-serif;
 }
+
+/* --- STYLES SPÉCIFIQUES PAGE CLASSEMENT --- */
+.leaderboard-section {
+    width: min(100% - 48px, 650px);
+    margin: 18px auto 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.leaderboard-title {
+    text-align: center;
+    font-family: var(--font-title);
+    font-size: 16px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.tabs-container {
+    display: flex;
+    background: var(--count-bg);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+    position: relative;
+    z-index: 2; /* S'assure que les boutons restent cliquables au-dessus du fond */
+}
+
+.tab-btn {
+    flex: 1;
+    padding: 12px;
+    text-align: center;
+    background: transparent;
+    border: none;
+    color: var(--white);
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background 0.2s ease;
+}
+
+.tab-btn.active {
+    background: var(--main);
+}
+
+.ranking-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.ranking-card {
+    background: var(--count-bg);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.rank-position {
+    font-family: var(--font-title);
+    font-size: 16px;
+    min-width: 30px;
+}
+
+.rank-badge-box {
+    background: var(--main);
+    border-radius: 8px;
+    padding: 8px 12px;
+    text-align: center;
+    min-width: 60px;
+}
+
+.badge-name {
+    font-family: var(--font-title);
+    font-size: 15px;
+    display: block;
+    line-height: 1.1;
+}
+
+.badge-score {
+    font-size: 11px;
+    font-style: italic;
+    margin-top: 2px;
+    display: block;
+}
+
+.rank-names {
+    display: flex;
+    gap: 15px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.rank-names ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}

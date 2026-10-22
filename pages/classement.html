@@ -1,12 +1,11 @@
-<!-- Page concernant l'inscription (à vérifier si utile) -->
- <!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="fr">
 <head>
     <link rel="icon" href="assets/logo_bds.svg" type="image/svg+xml">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#8c1734">
-    <title>Interpromos - Édition 2026</title>
+    <title>Interpromos - Classement 2026</title>
     <link rel="stylesheet" href="assets/css/main.css" type="text/css">
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=arrow_forward"/>
 </head>
@@ -26,13 +25,31 @@
         <nav class="navigation" id="navigation">
             <a href="index.html">Accueil</a>
             <a href="tournoi.html">Le tournoi</a>
-            <a href="inscription.html">Inscription</a>
+            <a href="classement.html">Les classements</a>
         </nav>
     </header>
 
-    <!-- CONTENU PRINCIPAL -->
-    <main class="main-content">
-        <p>Contenu de la page...</p>
+    <!-- CONTENU PRINCIPAL : CLASSEMENT -->
+    <main class="leaderboard-section">
+        <h2 class="leaderboard-title">Classement des</h2>
+        
+        <div class="tabs-container">
+            <button class="tab-btn active" id="btn-teams">Équipes</button>
+            <button class="tab-btn" id="btn-promos">Promotions</button>
+        </div>
+
+        <div class="ranking-list" id="ranking-container">
+            <!-- Injecté dynamiquement par JS -->
+        </div>
+
+        <div class="actions" style="margin-bottom: 45px;">
+            <a href="tournoi.html" class="text-link">
+                Voir tous les matchs <span class="material-symbols-rounded">arrow_forward</span>
+            </a>
+            <a href="tournoi.html" class="text-link" style="margin-top: 15px;">
+                Format du tournoi <span class="material-symbols-rounded">arrow_forward</span>
+            </a>
+        </div>
     </main>
 
     <footer class="footer">
@@ -66,6 +83,9 @@
         </div>
     </footer>
 
-    <script src="/assets/js/main.js"></script>
+    <script src="assets/js/main.js"></script>
+    <script>
+        
+    </script>
 </body>
 </html>
