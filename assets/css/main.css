@@ -27,34 +27,85 @@
 *    Exemple : color: var(--main);
 *
 */
-:root {
-    background: linear-gradient(115deg,#71132e 0%,#971b3a 45%,#c52349 100%);
-    min-height: 100vh;
-    width: 100%;
-    color: #ffffff;
-    font-family: sans-serif;
-    padding: 20px;
+
+.material-symbols-rounded {
+    font-variation-settings:
+    'FILL' 0,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24
 }
 
-.header-top {
-    display: flex;
-    align-items: center;    /* Aligne verticalement le texte et le logo au centre */
-    justify-content: baseline; 
-    padding: 10px 2px;
+main {
+  display: flex;
+  flex-direction: column;
+  gap: 50px;
+} 
+
+body {
+    min-height: 100dvh;
+    color: var(--white);
+    background: var(--bg);
+    font-family: var(--font-body);
 }
 
-h1.sitetitle {
-    color: white;
-    text-align: left;
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button {
+    font: inherit;
+}
+
+.button-primary {
     text-transform: uppercase;
-    font-weight: bold;
 }
 
-img.logo_bds {
-    width: 50px;
-    height: 50px;
+.header {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px 6%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo-text {
+    font-family: var(--font-title);
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-family: var(--font-title);
+    font-size: 20px;
+    line-height: 0.95;
 
 }
+
+.menu-toggle {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 5px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.menu-toggle span {
+    width: 27px;
+    height: 3px;
+    border-radius: 5px;
+    background: var(--white);
+}
+
+.navigation.open {
+    display: flex;
+}
+
 
 .intro-container {
     display: flex;
@@ -69,17 +120,17 @@ h2.h21 {
 
 h2.inter {
     font-weight: bolder;
-    color: white;
+    color: var(--white);
 }
 
 h2.h22 {
-    color: white;
+    color: var(--white);
     font-size: 15px;
 }
 
 div.actual_day {
-     background-color: #D42F53;
-     color: white;
+     background-color: var(--wine);
+     color: var(--white);
      font-weight: 700px;
      width: 250px;
      text-transform: uppercase;
@@ -94,8 +145,8 @@ div.actual_day {
 }
 
 #match_en_cours {
-     background-color: #52212b;
-     color: white;
+     background-color: var(--footer-bg);
+     color: var(--white);
      font-weight: 700px;
      margin-top: 25px;
      width: 250px;
@@ -122,8 +173,8 @@ span.number_live_matchs {
 }
 
 div.actual_football_matchs {
-    background-color: #5D1326; 
-    color: white;
+    background-color: var(--count-bg); 
+    color: var(--white);
     font-weight: 700px;
     margin-top: 25px;
     width: 250px;
@@ -163,8 +214,8 @@ div.actual_beer_and_run_matchs {
 
 
 #a_venir {
-     background-color: #52212b;
-     color: white;
+     background-color: var(--footer-bg);
+     color: var(--white);
      font-weight: 700px;
      margin-top: 25px;
      width: 250px;
@@ -182,14 +233,70 @@ div.a_venir {
     padding: 10px 25px;
     padding-top: 25px;
     margin-top: 25px;
+    color: var(--text-muted);
 }
 
 span.number_a_venir {
-    color: gray;
+    color: var(--text-muted);
     font-weight: lighter;
     font-style: normal;
 }
 
+button {
+    font: inherit;
+}
+.button-primary {
+    text-transform: uppercase;
+}
+
+.phoenix {
+    font-size: 34px;
+}
+
+.menu-toggle {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 5px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.menu-toggle span {
+    width: 27px;
+    height: 3px;
+    border-radius: 5px;
+    background: var(--white);
+}
+
+.navigation.open {
+    display: flex;
+}
+
+/* Contenu principal */
+.hero,
+.information,
+.registration {
+    width: min(100% - 48px, 650px);
+    margin: 18px auto 0;
+}
+
+.eyebrow {
+    text-transform: uppercase;
+}
+
+.button {
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    background: var(--main);
+    border-radius: 10px 10px 0 0;
+    font-weight: 900;
+    font-style: italic;
+}
 
 
 .outro-container {
@@ -199,7 +306,9 @@ span.number_a_venir {
 }
 
 h2.all_matchs {
-    color: white;
+    color: var(--white);
+    font-body: var(--font-body);
+    color: var(--white);
     text-align: left;
     text-transform: uppercase;
     font-style: italic;
@@ -207,14 +316,14 @@ h2.all_matchs {
 
 h2.equipe_classments {
     font-weight: bolder;
-    color: white;
+    color: var(--white);
     text-align: left;
     text-transform: uppercase;
     font-style: italic;
 }
 
 h2.format_tournois {
-    color: white;
+    color: var(--white);
     text-align: left;
     text-transform: uppercase;
     font-style: italic;
@@ -222,12 +331,12 @@ h2.format_tournois {
 
 span.tournoi-badge {
     text-align: center;
-    color: gray;
+    color: var(--text-muted);
 }
 
 h3.team-name-1 {
     text-align: left;
-    background-color: #c52349;
+    background-color: var(--main);
     border-radius: 20px;
     padding: 5px;
     width: 35px;
@@ -235,7 +344,7 @@ h3.team-name-1 {
 
 h3.team-name-2 {
     text-align: right;
-    background-color: #c52349;
+    background-color: var(--main);
     border-radius: 20px;
     padding: 5px;
     width: 35px;
@@ -257,4 +366,124 @@ span.score_home-score {
 span.score_away-score {
     font-weight: bolder;
     font-size: 25px;
+}
+
+.footer {
+  background-color: var(--footer-bg);
+  color: var(--white);
+  padding: 2.5rem 1.5rem;
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+/* --- COLONNE GAUCHE (LOGOS & FEAT) --- */
+.footer-col-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.footer-logos {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.club-logo {
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+}
+
+
+@media (min-width: 768px) {
+    .header {
+        padding-top: 35px;
+        padding-bottom: 35px;
+    }
+
+    .menu-toggle {
+        display: none;
+    }
+
+    .navigation {
+        display: flex;
+        flex-direction: row;
+        gap: 30px;
+    }
+
+    .hero {
+        margin-top: 35px;
+    }
+
+    .hero-image {
+        height: 370px;
+        border-radius: 12px;
+    }
+
+    .introduction {
+        font-size: 17px;
+    }
+
+    .actions {
+        flex-direction: column;
+        flex-wrap: wrap;
+        gap: 30px;
+    }
+
+    .information,
+    .registration {
+        padding-top: 85px;
+        text-wrap: balance;
+    }
+
+    .footer-container {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .footer-col-left {
+        align-items: flex-start;
+    }
+
+    .footer-col-center {
+        text-align: center;
+    }
+
+    .footer-col-right {
+        text-align: right;
+    }
+}
+
+
+
+
+:root {
+    --bg: linear-gradient(
+        145deg,
+        var(--wine) 0%,
+        var(--red) 55%,
+        var(--main) 100%
+    );
+    --main: #D42F53;
+    --wine: #80162F;
+    --white: #FFFFFF;
+    --text-muted: #D9A0AF;
+    --red: #A91D40;
+    --count-bg: rgba(65, 8, 28, 0.45);
+    --footer-bg: #1a1d20;
+    --footer: #a0aec0;
+    --footer-accent: #cbd5e0;
+
+    --font-title: "Climate Crisis", sans-serif;
+    --font-body: "Inter", sans-serif;
 }
