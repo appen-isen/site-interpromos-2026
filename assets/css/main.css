@@ -62,6 +62,8 @@ button {
     text-transform: uppercase;
 }
 
+
+
 .header {
     max-width: 1100px;
     margin: auto;
@@ -167,22 +169,94 @@ div.live_match {
 }
 
 span.number_live_matchs {
-    color: gray;
+    color: var(--text-muted);
     font-weight: lighter;
     font-style: normal;
 }
 
 div.actual_football_matchs {
     background-color: var(--count-bg); 
-    color: var(--white);
-    font-weight: 700px;
+    font-weight: 700;
     margin-top: 25px;
     width: 250px;
     padding-top: 25px;
-    width: 100%; /* Occupe toute la largeur disponible */
+    width: 100%;
     box-sizing: border-box;
     text-align: center;
     padding: 10px 25px;
+}
+
+.match_header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    font-size: 12px;
+}
+
+.team-badge-1, .team-badge-2 {
+    text-align: left;
+    background-color: var(--main);
+    border-radius: 20px;
+    padding: 4px 10px;
+}
+
+.match-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--white);
+    opacity: 0.85;
+}
+
+.timer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.1;
+}
+
+.time-bonus {
+    color: var(--text-main);
+    font-size: 10px;
+}
+
+.match_body {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.team {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 13px;
+    color: var(--text-main);
+}
+
+.home-team {
+    text-align: left;
+}
+
+.away-team {
+    text-align: right;
+}
+
+/* Score central avec l'icône */
+.score_container {
+    display:flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    color: var(--text-main, #fff);
+}
+
+
+.time-bonus {
+    color: var(--text-main);
 }
 
 div.actual_badminton_matchs {
@@ -242,6 +316,15 @@ span.number_a_venir {
     font-style: normal;
 }
 
+.main-content {
+    max-width: 1100px;
+    margin: auto;
+    padding: 30px 6%;
+    display:block;
+    align-items: left;
+    justify-content: space-between;
+}
+
 button {
     font: inherit;
 }
@@ -270,8 +353,8 @@ button {
     background: var(--white);
 }
 
-.navigation.open {
-    display: flex;
+.navigation{
+    display: none;
 }
 
 /* Contenu principal */
@@ -334,7 +417,7 @@ span.tournoi-badge {
     color: var(--text-muted);
 }
 
-h3.team-name-1 {
+.team-name-1 {
     text-align: left;
     background-color: var(--main);
     border-radius: 20px;
@@ -342,8 +425,13 @@ h3.team-name-1 {
     width: 35px;
 }
 
-h3.team-name-2 {
+span.time-bonus {
+    color: var(--text-main);
+}
+
+.team-name-2 {
     text-align: right;
+    align-content: right;
     background-color: var(--main);
     border-radius: 20px;
     padding: 5px;
