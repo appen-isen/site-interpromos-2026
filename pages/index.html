@@ -4,11 +4,132 @@
     <link rel="icon" href="assets/logo_bds.svg" type="image/svg+xml">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#8c1734">
     <title>Interpromos - Édition 2026</title>
     <link rel="stylesheet" href="assets/css/main.css" type="text/css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=arrow_forward"/>
 </head>
+
 <body>
-    <h1>Interpromos</h1>
-    <p>Hello World !</p>
+    <header class="header">
+        <a href="/" class="logo" aria-label="Accueil Interpromos">
+            <span class="logo-text">INTER<br>PROMOS</span>
+            <span class="phoenix"><img src="assets/logo_bds.svg" alt="Logo Interpromos"></span>
+        </a>
+
+        <button class="menu-toggle" aria-label="Ouvrir le menu" aria-expanded="false" aria-controls="navigation">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <nav class="navigation" id="navigation">
+            <a href="index.html">Accueil</a>
+            <a href="tournoi.html">Le tournoi</a>
+            <a href="inscription.html">Inscription</a>
+        </nav>
+    </header>
+
+    <main id="accueil">
+        <section class="hero">
+            <a href="inscription.html" class="button button-primary">
+                s'inscrire <span class="material-symbols-rounded">arrow_forward</span>
+            </a>
+
+            <div class="countdown" id="tournoi">
+                <p class="date">Du 03 au 05 novembre 2026</p>
+                <span class="separator"></span>
+                <p class="countdown-label">Le tournoi commence dans</p>
+
+                <!-- COMPTAGE À REBOURS -->
+
+                <!-- <div class="timer" id="timer">
+                    <div><strong id="days">--</strong><small>JOURS</small></div>
+                    <div><strong id="hours">--</strong><small>HEURES</small></div>
+                    <div><strong id="minutes">--</strong><small>MIN</small></div>
+                    <div><strong id="seconds">--</strong><small>SEC</small></div>
+                </div> -->
+            </div>
+
+            <div class="hero-image">
+                <!-- A CHANGER POUR LE TRAILER -->
+                <img src="https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1200&q=85" alt="Trailer BDS">
+            </div>
+
+            <div class="introduction">
+                <p>Bienvenue pour l'édition 2026 des <br>
+                    <strong style="letter-spacing: 3px;">Interpromos !</strong>
+                </p>
+
+                <p>
+                    Préparez votre équipe et affrontez les autres années
+                    du campus dans différentes épreuves sportives.
+                </p>
+            </div>
+
+            <div class="actions">
+                <a href="inscription.html" class="text-link">
+                    s'inscrire <span class="material-symbols-rounded">arrow_forward</span>
+                </a>
+
+                <a href="tournoi.html" class="text-link">
+                    format du tournoi <span class="material-symbols-rounded">arrow_forward</span>
+                </a>
+            </div>
+        </section>
+
+        <section class="information" id="format">
+            <p class="eyebrow">isen nantes · édition 2026</p>
+            <h2>Trois jours.<br>Une seule compétition.</h2>
+            <p>
+                Retrouvez les informations du tournoi, les résultats,
+                le classement et le programme des matchs.
+            </p>
+            <a href="tournoi.html" class="text-link">
+                découvrir les matchs <span class="material-symbols-rounded">arrow_forward</span>
+            </a>
+        </section>
+
+        <section class="registration" id="inscription">
+            <h2>Prêts à relever le défi ?</h2>
+            <p>Rassemblez votre équipe et préparez-vous à représenter votre promotion.</p>
+            <a href="#" class="button button-primary">
+                nous contacter <span class="material-symbols-rounded">arrow_forward</span>
+            </a>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            
+            <!-- Section Gauche : Logos BDS x APPEN -->
+            <div class="footer-col-left">
+            <div class="footer-logos">
+                <img src="assets/logo_bds.svg" alt="Logo BDS ISEN Nantes" class="club-logo">
+                <span class="feat-separator">×</span>
+                <img src="assets/logo_appen.png" alt="Logo Club APPEN" class="club-logo">
+            </div>
+            <p class="feat-text">BDS <span> <br> </span> Club APPEN</p>
+            </div>
+
+            <!-- Section Centre : Titre & Rôles -->
+            <div class="footer-col-center">
+            <h3 class="event-title">interpromos 2026</h3>
+            <p class="school-name">isen nantes</p>
+            <p class="roles-desc">
+                Organisé par le <strong>BDS</strong> · Développé par le <strong>Club APPEN</strong>
+            </p>
+            </div>
+
+            <!-- Section Droite : Mentions légales / Droits -->
+            <div class="footer-col-right">
+            <p class="copyright">&copy; 2026 Interpromos ISEN Nantes.</p>
+            <p class="rights">Tous droits réservés.</p>
+            </div>
+
+        </div>
+    </footer>
+
+    <script src="/assets/js/main.js"></script>
 </body>
 </html>
