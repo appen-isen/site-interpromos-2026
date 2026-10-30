@@ -91,7 +91,7 @@ export async function api_upload_media(request, response) {
     } catch (err) {
         await deleteMediaFile(stored.storagePath);
         console.error('Erreur POST /api/media/upload :', err);
-        response.status(500).json({ error: "Erreur lors de l'enregistrement du média en base." });
+        response.status(500).json({ error: "Le fichier n'a pas pu être ajouté à la galerie. Réessayez." });
     }
 }
 
@@ -153,13 +153,32 @@ export async function api_put_media_slot(request, response) {
     }
 }
 
+// Message simple pour le BDS ; la cause technique, elle, est écrite dans les journaux du serveur
+function storageErrorMessage(err) {
+    const reason = String(err.reason || '').toLowerCase();
+    if (reason.includes('bucket not found') || reason.includes('related resource does not exist')) {
+        console.error(`Stockage : le bucket « ${err.bucket} » n'existe pas dans Supabase Storage (créer le bucket public ou corriger SUPABASE_STORAGE_BUCKET).`);
+        return "L'ajout de photos et de vidéos n'est pas disponible pour le moment. Prévenez la personne qui s'occupe du site.";
+    }
+    if (err.status === 401 || err.status === 403 || /signature|jwt|invalid/.test(reason)) {
+        console.error('Stockage : clé refusée par Supabase Storage (vérifier SUPABASE_SERVICE_ROLE_KEY sur Vercel).');
+        return "L'ajout de photos et de vidéos n'est pas disponible pour le moment. Prévenez la personne qui s'occupe du site.";
+    }
+    if (/mime|type/.test(reason)) {
+        console.error(`Stockage : format refusé par les réglages du bucket « ${err.bucket} » (types autorisés).`);
+        return 'Ce type de fichier est refusé. Essayez une photo en JPG ou PNG, ou une vidéo en MP4.';
+    }
+    return "L'envoi n'a pas pu démarrer. Réessayez dans un instant ; si le problème continue, prévenez la personne qui s'occupe du site.";
+}
+
 /**
  * POST /api/media/upload-url (admin, Supabase) — { type, size }
  * Retourne une URL signée pour envoyer le fichier directement à Supabase Storage.
  */
 export async function api_media_upload_url(request, response) {
     if (!isSupabaseStorage()) {
-        return response.status(400).json({ error: 'Envoi direct indisponible : Supabase Storage n’est pas configuré.' });
+        console.error('Stockage : envoi direct demandé alors que Supabase Storage n’est pas configuré (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY).');
+        return response.status(400).json({ error: "L'ajout de photos et de vidéos n'est pas disponible pour le moment. Prévenez la personne qui s'occupe du site." });
     }
     const { type, size } = request.body || {};
     const mime = mimeFromDeclared(type);
@@ -171,7 +190,7 @@ export async function api_media_upload_url(request, response) {
         response.json(await createSignedUpload(mime));
     } catch (err) {
         console.error('Erreur URL signée Supabase :', err.message);
-        response.status(502).json({ error: "Impossible de préparer l'envoi vers Supabase Storage." });
+        response.status(502).json({ error: storageErrorMessage(err) });
     }
 }
 
@@ -207,6 +226,6 @@ export async function api_media_complete(request, response) {
     } catch (err) {
         await deleteMediaFile(stored.storagePath);
         console.error('Erreur POST /api/media/complete :', err);
-        response.status(500).json({ error: "Erreur lors de l'enregistrement du média en base." });
+        response.status(500).json({ error: "Le fichier n'a pas pu être ajouté à la galerie. Réessayez." });
     }
 }

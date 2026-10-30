@@ -2,6 +2,7 @@ import { state, SPORTS, SIZE, VENUE, EDITION, PROMOS, MASCOT, resetForm, resetMa
 import { esc } from './utils.js';
 import { toggleTheme } from './theme.js';
 import { openLightbox } from './lightbox.js';
+import { charterText } from './render-pages.js';
 import {
   submitAdminLogin,
   submitAdminLogout,
@@ -83,6 +84,9 @@ function updateLiveInscriptionPreview() {
     hintEl.style.color = filled >= minP ? 'var(--success)' : 'var(--accent)';
     hintEl.style.borderColor = filled >= minP ? 'var(--success)' : 'var(--line)';
   }
+
+  const charter = document.getElementById('form-charter-text');
+  if (charter) charter.innerHTML = charterText(f);
 
   const prevTeam = document.getElementById('preview-team-name');
   if (prevTeam) {
@@ -397,6 +401,7 @@ export function attachEventListeners(render, go) {
       const photosF = state.photos.filter(p => state.album === 'Tout' || p.album === state.album);
       openLightbox(photosF, Number(btn.dataset.index), btn);
     } else if (action === 'form-promo') {
+      if (state.form.promo !== btn.dataset.promo) state.form.rules = false;
       state.form.promo = btn.dataset.promo;
       render();
     } else if (action === 'form-sport') {
@@ -405,6 +410,7 @@ export function attachEventListeners(render, go) {
       const pl = [...state.form.players];
       while (pl.length < minP) pl.push('');
       while (pl.length > minP + 3) pl.pop();
+      if (state.form.sport !== i) state.form.rules = false;
       state.form.sport = i;
       state.form.players = pl;
       delete state.err.players;

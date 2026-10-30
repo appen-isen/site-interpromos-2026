@@ -73,7 +73,7 @@ jobs:
       APP_URL: http://localhost:3000
       # Compte local de l'Espace BDS (Supabase Auth n'est pas utilisé dans la CI)
       LOCAL_ADMIN_EMAIL: ci@interpromos.test
-      LOCAL_ADMIN_PASSWORD: mot-de-passe-ci
+      LOCAL_ADMIN_PASSWORD: mot-de-passe--de-test
       CHECK_ADMIN: '1'
 
     steps:

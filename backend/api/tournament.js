@@ -42,7 +42,7 @@ export async function api_state(request, response) {
         });
     } catch (err) {
         console.error('Erreur GET /api/state :', err);
-        response.status(500).json({ error: 'Erreur lors de la récupération des données en base.' });
+        response.status(500).json({ error: "Les données du tournoi n'ont pas pu être chargées. Réessayez dans un instant." });
     }
 }
 
