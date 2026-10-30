@@ -11,8 +11,9 @@ const ROOT_DIR = path.resolve(__dirname, '../..');
 const ENV_PATH = path.join(ROOT_DIR, '.env');
 const SQL_DIR = path.resolve(__dirname, '../sql');
 
-// Chargement automatique du fichier .env s'il existe
+
 function loadEnvFile() {
+    if (process.execArgv.some(arg => arg.startsWith('--env-file'))) return;
     if (!fs.existsSync(ENV_PATH)) return;
     const lines = fs.readFileSync(ENV_PATH, 'utf-8').split(/\r?\n/);
     for (const line of lines) {

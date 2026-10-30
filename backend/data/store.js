@@ -1,4 +1,5 @@
 import { pool, query } from './db.js';
+import { setDatabaseRole } from './environment.js';
 
 // Édition par défaut, utilisée uniquement pour initialiser une base vierge (modifiable ensuite dans l'Espace BDS)
 export const DEFAULT_EDITION = { annee: 2026, dateDebut: '2026-11-03', heureDebut: '13:00', lieu: 'ISEN Nantes' };
@@ -72,6 +73,14 @@ export async function ensureBaseReferences(client = pool) {
 }
 
 async function runEnsureBaseReferences(client, { backfillAlbumDates = false } = {}) {
+    // Le site déployé marque sa base : « production » protège ensuite cette base de tout test
+    const deployedRole = { production: 'production', preview: 'preview' }[process.env.VERCEL_ENV];
+    if (deployedRole) {
+        await setDatabaseRole(deployedRole, { client }).catch(err => {
+            console.error(`ATTENTION : la base de ce déploiement « ${deployedRole} » est mal configurée. ${err.message}`);
+        });
+    }
+
     await client.query(
         `INSERT INTO edition (annee, date_debut, heure_debut, lieu) VALUES ($1, $2, $3, $4) ON CONFLICT (unique_ligne) DO NOTHING`,
         [DEFAULT_EDITION.annee, DEFAULT_EDITION.dateDebut, DEFAULT_EDITION.heureDebut, DEFAULT_EDITION.lieu]
@@ -146,6 +155,42 @@ export async function runMigrations(readSql) {
     } finally {
         client.release();
     }
+}
+
+/**
+ * Découpe « Prénom Nom » ; un seul mot donne un prénom sans nom de famille (jamais de nom inventé).
+ */
+export function splitFullName(fullName) {
+    const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+    return { prenom: parts[0] || '', nom: parts.slice(1).join(' ') || null };
+}
+
+/**
+ * Retrouve ou crée un participant à partir de son nom complet et retourne son id.
+ * Avec nom et prénom, le même étudiant est réutilisé d'une équipe à l'autre ; avec un prénom seul,
+ * on ne peut pas savoir qui c'est : un nouveau participant est créé (les orphelins sont supprimés ensuite).
+ */
+export async function upsertParticipant(client, promoId, fullName) {
+    const { prenom, nom } = splitFullName(fullName);
+    const { rows } = nom
+        ? await client.query(
+            `INSERT INTO participants (id_promo, nom, prenom) VALUES ($1, $2, $3)
+             ON CONFLICT (nom, prenom) DO UPDATE SET id_promo = EXCLUDED.id_promo
+             RETURNING id`,
+            [promoId, nom, prenom]
+        )
+        : await client.query(
+            'INSERT INTO participants (id_promo, nom, prenom) VALUES ($1, NULL, $2) RETURNING id',
+            [promoId, prenom]
+        );
+    return rows[0].id;
+}
+
+/** Supprime les participants qui ne font plus partie d'aucune équipe. */
+export async function deleteOrphanParticipants(client) {
+    await client.query(
+        'DELETE FROM participants pa WHERE NOT EXISTS (SELECT 1 FROM rejoindre_equipe re WHERE re.id_participant = pa.id)'
+    );
 }
 
 /**
@@ -766,7 +811,7 @@ export async function dbGetTeams(filters = {}) {
                 e.statut AS status,
                 e.est_inscription AS "isRegistration",
                 COALESCE(
-                    ARRAY_AGG(TRIM(pa.prenom || ' ' || pa.nom) ORDER BY re.ordre ASC, pa.cree_le ASC) FILTER (WHERE pa.id IS NOT NULL),
+                    ARRAY_AGG(CONCAT_WS(' ', pa.prenom, pa.nom) ORDER BY re.ordre ASC, pa.cree_le ASC) FILTER (WHERE pa.id IS NOT NULL),
                     ARRAY[]::TEXT[]
                 ) AS "playersList",
                 COALESCE(
@@ -775,7 +820,7 @@ export async function dbGetTeams(filters = {}) {
                             'id', pa.id,
                             'prenom', pa.prenom,
                             'nom', pa.nom,
-                            'fullName', TRIM(pa.prenom || ' ' || pa.nom),
+                            'fullName', CONCAT_WS(' ', pa.prenom, pa.nom),
                             'ordre', re.ordre
                         ) ORDER BY re.ordre ASC, pa.cree_le ASC
                     ) FILTER (WHERE pa.id IS NOT NULL),
@@ -825,19 +870,7 @@ async function syncTeamPlayersList(client, teamId, promoId, sportId, playersList
 
     const cleanPlayers = (playersList || []).map(p => String(p || '').trim()).filter(Boolean);
     for (let i = 0; i < cleanPlayers.length; i++) {
-        const fullName = cleanPlayers[i];
-        const parts = fullName.split(/\s+/);
-        const prenom = parts[0] || 'Étudiant';
-        const nom = parts.slice(1).join(' ') || `ISEN-${teamId}-${i + 1}`;
-
-        const partRes = await client.query(
-            `INSERT INTO participants (id_promo, nom, prenom)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (nom, prenom) DO UPDATE SET id_promo = EXCLUDED.id_promo
-             RETURNING id`,
-            [promoId, nom, prenom]
-        );
-        const participantId = partRes.rows[0].id;
+        const participantId = await upsertParticipant(client, promoId, cleanPlayers[i]);
 
         await client.query(
             `INSERT INTO rejoindre_equipe (id_equipe, id_participant, ordre)
@@ -855,6 +888,7 @@ async function syncTeamPlayersList(client, teamId, promoId, sportId, playersList
     }
 
     await client.query('UPDATE equipes SET nb_joueurs = $1 WHERE id = $2', [cleanPlayers.length, teamId]);
+    await deleteOrphanParticipants(client);
 }
 
 export async function dbCreateTeam({ promo = 'A1', si = 0, name, captain, email = '', maxPlayers, playersList = [] }) {
@@ -1033,18 +1067,7 @@ export async function dbAddPlayerToTeam(teamId, { fullName, autoIncreaseMax = fa
             }
         }
 
-        const parts = cleanName.split(/\s+/);
-        const prenom = parts[0] || 'Étudiant';
-        const nom = parts.slice(1).join(' ') || `ISEN-${teamId}`;
-
-        const partRes = await client.query(
-            `INSERT INTO participants (id_promo, nom, prenom)
-             VALUES ($1, $2, $3)
-             ON CONFLICT (nom, prenom) DO UPDATE SET id_promo = EXCLUDED.id_promo
-             RETURNING id`,
-            [teamRow.id_promo, nom, prenom]
-        );
-        const participantId = partRes.rows[0].id;
+        const participantId = await upsertParticipant(client, teamRow.id_promo, cleanName);
 
         await client.query(
             `INSERT INTO rejoindre_equipe (id_equipe, id_participant, ordre)
@@ -1088,7 +1111,7 @@ export async function dbRemovePlayerFromTeam(teamId, participantId) {
         );
 
         const remainingRes = await client.query(
-            `SELECT pa.id, TRIM(pa.prenom || ' ' || pa.nom) AS full_name
+            `SELECT pa.id, CONCAT_WS(' ', pa.prenom, pa.nom) AS full_name
              FROM rejoindre_equipe re
              JOIN participants pa ON pa.id = re.id_participant
              WHERE re.id_equipe = $1
@@ -1180,7 +1203,7 @@ export async function dbMovePlayer(teamId, { participantId, direction, targetTea
 
         // Cas 2 : Réordonnancement dans la même équipe (haut / bas / définir comme capitaine)
         const rosterRes = await client.query(
-            `SELECT pa.id, TRIM(pa.prenom || ' ' || pa.nom) AS full_name
+            `SELECT pa.id, CONCAT_WS(' ', pa.prenom, pa.nom) AS full_name
              FROM rejoindre_equipe re
              JOIN participants pa ON pa.id = re.id_participant
              WHERE re.id_equipe = $1
@@ -1263,7 +1286,7 @@ export async function dbGetRegistrations() {
             e.date_inscription AS date,
             e.statut AS status,
             COALESCE(
-                ARRAY_AGG(TRIM(pa.prenom || ' ' || pa.nom) ORDER BY pa.cree_le ASC) FILTER (WHERE pa.id IS NOT NULL),
+                ARRAY_AGG(CONCAT_WS(' ', pa.prenom, pa.nom) ORDER BY pa.cree_le ASC) FILTER (WHERE pa.id IS NOT NULL),
                 ARRAY[]::TEXT[]
             ) AS "playersList"
         FROM equipes e
@@ -1310,20 +1333,7 @@ export async function dbCreateRegistration({ sportIndex, sportName, promo, team,
         const equipeId = insertTeamRes.rows[0].id;
 
         for (const fullName of playersList || []) {
-            const parts = String(fullName).trim().split(/\s+/);
-            const prenom = parts[0] || 'Étudiant';
-            const nom = parts.slice(1).join(' ') || `ISEN-${equipeId}`;
-
-            const partRes = await client.query(
-                `
-                INSERT INTO participants (id_promo, nom, prenom)
-                VALUES ($1, $2, $3)
-                ON CONFLICT (nom, prenom) DO UPDATE SET id_promo = EXCLUDED.id_promo
-                RETURNING id
-                `,
-                [promoId, nom, prenom]
-            );
-            const participantId = partRes.rows[0].id;
+            const participantId = await upsertParticipant(client, promoId, fullName);
 
             await client.query(
                 `
@@ -1377,12 +1387,12 @@ export async function dbFindRegistrationConflicts({ promo, sportIndex, team, pla
             [sportId, promo, team]
         ),
         query(
-            `SELECT DISTINCT TRIM(pa.prenom || ' ' || pa.nom) AS name
+            `SELECT DISTINCT CONCAT_WS(' ', pa.prenom, pa.nom) AS name
              FROM rejoindre_equipe re
              JOIN equipes e ON e.id = re.id_equipe
              JOIN participants pa ON pa.id = re.id_participant
              WHERE e.id_sport = $1 AND e.statut <> 'Refusée'
-               AND LOWER(TRIM(pa.prenom || ' ' || pa.nom)) = ANY($2::TEXT[])`,
+               AND LOWER(CONCAT_WS(' ', pa.prenom, pa.nom)) = ANY($2::TEXT[])`,
             [sportId, players.map(p => p.toLowerCase())]
         )
     ]);

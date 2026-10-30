@@ -1,5 +1,5 @@
 import { pool } from '../data/db.js';
-import { ensureBaseReferences, dbGetTeams } from '../data/store.js';
+import { ensureBaseReferences, dbGetTeams, upsertParticipant, deleteOrphanParticipants } from '../data/store.js';
 
 // Correspondance souple des noms de sports vers l'indice (0 à 5)
 const SPORT_ALIASES = {
@@ -235,18 +235,7 @@ export async function api_import_csv(request, response) {
             }
 
             for (const playerName of uniquePlayers) {
-                const parts = playerName.trim().split(/\s+/);
-                const prenom = parts[0] || 'Étudiant';
-                const nom = parts.slice(1).join(' ') || promoCode;
-
-                const partRes = await client.query(
-                    `INSERT INTO participants (id_promo, nom, prenom)
-                     VALUES ($1, $2, $3)
-                     ON CONFLICT (nom, prenom) DO UPDATE SET id_promo = EXCLUDED.id_promo
-                     RETURNING id`,
-                    [promoId, nom, prenom]
-                );
-                const participantId = partRes.rows[0].id;
+                const participantId = await upsertParticipant(client, promoId, playerName);
 
                 await client.query(
                     `INSERT INTO rejoindre_equipe (id_equipe, id_participant)
@@ -274,6 +263,7 @@ export async function api_import_csv(request, response) {
             });
         }
 
+        await deleteOrphanParticipants(client);
         await client.query('COMMIT');
 
         const allTeams = await dbGetTeams();
