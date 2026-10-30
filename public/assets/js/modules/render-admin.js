@@ -1,4 +1,4 @@
-import { esc, albumPeriod, formatAlbumDates, groupAlbumsByPeriod, PERIOD_LABELS } from './utils.js';
+import { esc, mapLink, albumPeriod, formatAlbumDates, groupAlbumsByPeriod, PERIOD_LABELS } from './utils.js';
 import { state, DAYS, ALBUMS, SPORTS, PROMOS, VENUE, EDITION } from './state.js';
 import { renderThemeToggle } from './theme.js';
 
@@ -936,8 +936,8 @@ function renderAdminEdition(s) {
           </label>
         </div>
         <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:${M}">
-          Lieu
-          <input data-field="editionForm-venue" maxlength="80" value="${esc(f.venue)}" style="${input}">
+          Lieu (nom ou adresse : le site ouvre la carte de ce lieu)
+          <input data-field="editionForm-venue" maxlength="80" value="${esc(f.venue)}" placeholder="Ex : ISEN Nantes" style="${input}">
         </label>
         <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:${M}">
           E-mail de contact affiché sur le site (facultatif)
@@ -954,7 +954,7 @@ function renderAdminEdition(s) {
       <div style="background:var(--surface);border:1px solid ${L};padding:24px">
         <div style="font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:${R};margin-bottom:8px">Édition en ligne</div>
         <div style="font:italic 900 44px/1 'Barlow Condensed',sans-serif;text-transform:uppercase">Interpromos ${esc(EDITION.year)}</div>
-        <div style="font-size:15px;color:var(--text-2);margin:8px 0 18px">${esc(EDITION.range)} · ${esc(EDITION.venue)} · coup d'envoi ${esc(EDITION.time)}${EDITION.contact ? ` · ${esc(EDITION.contact)}` : ''}</div>
+        <div style="font-size:15px;color:var(--text-2);margin:8px 0 18px">${esc(EDITION.range)} · ${mapLink(EDITION.venue)} · coup d'envoi ${esc(EDITION.time)}${EDITION.contact ? ` · ${esc(EDITION.contact)}` : ''}</div>
         ${DAYS.map(day => `
           <div style="display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid ${L};font-size:14px">
             <span>${esc(day[0])}</span><span style="color:${M}">${esc(day[1])} · ${esc(day[2])}</span>

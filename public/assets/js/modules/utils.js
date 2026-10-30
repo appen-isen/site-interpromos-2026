@@ -6,6 +6,16 @@ export function esc(str) {
     .replace(/"/g, '&quot;');
 }
 
+// Lien vers la carte (sur téléphone, ouvre l'application Google Maps)
+export function mapUrl(place) {
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
+}
+
+// Adresse cliquable qui ouvre la carte dans un nouvel onglet
+export function mapLink(place, style = 'color:inherit;text-decoration:underline;text-underline-offset:3px') {
+  return `<a href="${esc(mapUrl(place))}" target="_blank" rel="noopener noreferrer" title="Voir ${esc(place)} sur la carte" style="${style}">${esc(place)}</a>`;
+}
+
 function todayIso() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

@@ -136,7 +136,7 @@ export async function api_patch_registration(request, response) {
 
         const result = await dbUpdateRegistrationStatus(id, status);
         if (!result) {
-            return response.status(404).json({ error: 'Inscription introuvable en base de données.' });
+            return response.status(404).json({ error: 'Inscription introuvable.' });
         }
 
         response.json(result);

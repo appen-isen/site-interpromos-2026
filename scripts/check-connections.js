@@ -93,6 +93,18 @@ async function checkDatabase() {
     if (idTypes.length) fail(G, 'Identifiants UUID', `non convertis : ${idTypes.map(r => r.table_name).join(', ')}`);
     else if (!missing.length) ok(G, 'Identifiants UUID', 'toutes les tables');
 
+   
+    const REQUIRED_COLUMNS = [['edition', 'contact_email'], ['photos', 'emplacement'], ['albums', 'date_debut'], ['participants', 'cree_le']];
+    if (!missing.length) {
+        const { rows: cols } = await query(
+            `SELECT table_name || '.' || column_name AS col FROM information_schema.columns WHERE table_schema = current_schema()`
+        );
+        const present = new Set(cols.map(c => c.col));
+        const absent = REQUIRED_COLUMNS.map(([t, c]) => `${t}.${c}`).filter(c => !present.has(c));
+        if (absent.length) fail(G, 'Schéma à jour', `colonnes manquantes : ${absent.join(', ')} (lancer la migration)`);
+        else ok(G, 'Schéma à jour', 'dernière version');
+    }
+
     const noRls = REQUIRED_TABLES.filter(t => present.has(t) && !present.get(t));
     if (noRls.length) fail(G, 'RLS', `désactivé sur : ${noRls.join(', ')}`);
     else if (!missing.length) ok(G, 'RLS', 'activé partout');
@@ -193,7 +205,8 @@ async function checkStorage() {
         });
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
-            fail(G, `Bucket « ${bucket} »`, `HTTP ${res.status} ${data.message || data.error || ''}`.trim());
+            const notFound = res.status === 404 || /not found|does not exist/i.test(`${data.message} ${data.error}`);
+            fail(G, `Bucket « ${bucket} »`, notFound ? 'introuvable : créez-le dans Storage (public)' : `HTTP ${res.status} ${data.message || data.error || ''}`.trim());
             return;
         }
         ok(G, `Bucket « ${bucket} »`, `accessible · ${ms(start)}`);

@@ -43,7 +43,7 @@ export async function api_patch_album(request, response) {
 
         const result = await dbUpdateAlbumVisibility(name, published);
         if (!result) {
-            return response.status(404).json({ error: 'Album introuvable en base de données.' });
+            return response.status(404).json({ error: 'Album introuvable.' });
         }
 
         response.json(result);

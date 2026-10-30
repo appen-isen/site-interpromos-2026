@@ -23,8 +23,10 @@ function putToSignedUrl(url, file, onPercent) {
     xhr.upload.onprogress = e => e.lengthComputable && onPercent(Math.round((e.loaded / e.total) * 100));
     xhr.onload = () => (xhr.status >= 200 && xhr.status < 300
       ? resolve()
-      : reject(new Error(`envoi refusé par le stockage (${xhr.status}) — vérifiez la taille maximale du bucket.`)));
-    xhr.onerror = () => reject(new Error('connexion au stockage impossible.'));
+      : reject(new Error(xhr.status === 413 || xhr.status === 400
+        ? 'fichier refusé, il est sans doute trop lourd. Essayez une version plus légère.'
+        : "l'envoi a échoué. Réessayez dans un instant.")));
+    xhr.onerror = () => reject(new Error("la connexion a été interrompue pendant l'envoi. Réessayez."));
     xhr.send(file);
   });
 }
@@ -65,7 +67,7 @@ async function mediaRequest(url, options) {
   }
   const data = await safeJson(res);
   if (!res.ok || data._nonJson) {
-    throw new Error(data.error || `Erreur serveur (${res.status}).`);
+    throw new Error(data.error || 'Une erreur est survenue. Réessayez dans un instant.');
   }
   return data;
 }

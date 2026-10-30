@@ -1,4 +1,4 @@
-import { esc, albumPeriod, formatAlbumDates, groupAlbumsByPeriod } from './utils.js';
+import { esc, mapLink, mapUrl, albumPeriod, formatAlbumDates, groupAlbumsByPeriod } from './utils.js';
 import { state, SPORTS, SHORT, PROMOS, MASCOT, VENUE, DAYS, SIZE, EDITION } from './state.js';
 
 const SPORT_META = [
@@ -49,7 +49,7 @@ export function renderHome(d) {
     <div class="hero-grid" style="display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);border-bottom:1px solid var(--line)">
       <div style="padding:72px 48px 64px;display:flex;flex-direction:column;gap:28px">
         <div style="display:flex;align-items:center;gap:10px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)">
-          <span style="width:24px;height:2px;background:var(--accent)"></span>${esc(EDITION.range)} · ${esc(EDITION.venue)}
+          <span style="width:24px;height:2px;background:var(--accent)"></span>${esc(EDITION.range)} · ${mapLink(EDITION.venue, 'color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px')}
         </div>
         <h1 style="font:italic 900 120px/.86 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0">
           Une promo.<br><span style="color:var(--accent)">Un titre.</span>
@@ -75,7 +75,7 @@ export function renderHome(d) {
       <div class="countdown-grid" style="display:grid;grid-template-columns:repeat(${DAYS.length + 1},minmax(0,1fr));border-bottom:1px solid var(--line)">
         <div style="padding:28px 48px;border-right:1px solid var(--line)">
           <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Coup d'envoi dans</div>
-          <div style="font:italic 800 44px/1 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums">${cd.d}J ${cd.h}H ${cd.m}M</div>
+          <div id="countdown" class="countdown-value" role="timer" aria-live="off" style="font:italic 800 44px/1 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap">${cd.d}J ${cd.h}H ${cd.m}M ${cd.s}S</div>
         </div>
         ${DAYS.map((day, i) => {
           const last = i === DAYS.length - 1;
@@ -132,7 +132,11 @@ export function renderHome(d) {
         ${avant ? `
           <h2 style="${BIG};margin:0 0 20px">Infos pratiques</h2>
           <div style="padding:16px 0;border-top:1px solid var(--line)">
-            <div style="font-size:12px;color:var(--muted)">Lieux</div>
+            <div style="font-size:12px;color:var(--muted)">Adresse</div>
+            <div style="font-size:16px;margin-top:4px">${esc(EDITION.venue)} · <a href="${esc(mapUrl(EDITION.venue))}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-weight:600;text-decoration:none">voir sur la carte →</a></div>
+          </div>
+          <div style="padding:16px 0;border-top:1px solid var(--line)">
+            <div style="font-size:12px;color:var(--muted)">Terrains</div>
             <div style="font-size:16px;margin-top:4px">${esc(venues.join(' · ') || 'ISEN Nantes')}</div>
           </div>
           <div style="padding:16px 0;border-top:1px solid var(--line)">
@@ -392,6 +396,17 @@ export function renderTeams(d) {
       </div>
     `}
   `;
+}
+
+// Engagement
+export function charterText(f) {
+  const players = f.players.map(x => x.trim()).filter(Boolean).length;
+  const team = f.team.trim() ? `l'équipe <strong>« ${esc(f.team.trim())} »</strong>` : 'mon équipe';
+  const who = players === 0 ? 'tous les joueurs de ' + team
+    : players === 1 ? `le joueur inscrit dans ${team}`
+    : `les <strong>${players} joueurs</strong> de ${team}`;
+  const captain = f.captain.trim() ? `, capitaine <strong>${esc(f.captain.trim())}</strong>` : '';
+  return `<strong>Charte Fair-Play &amp; Règlement BDS :</strong> Je certifie que ${who} (<strong>${esc(SPORTS[f.sport] || '')}</strong>${captain}) ${players === 1 ? 'appartient' : 'appartiennent'} bien à la promo <strong>${esc(f.promo)}</strong> et ${players === 1 ? "s'engage" : "s'engagent"} à respecter les horaires, les arbitres et l'esprit sportif des Interpromos ${esc(EDITION.year)}.`;
 }
 
 export function renderInscription(d) {
@@ -726,9 +741,7 @@ export function renderInscription(d) {
           <section style="background:var(--surface);border:1px solid var(--line);padding:28px;display:flex;flex-direction:column;gap:18px">
             <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">
               <input data-field="form-rules" type="checkbox" ${f.rules ? 'checked' : ''} style="width:18px;height:18px;margin-top:2px;accent-color:var(--accent)">
-              <span style="font-size:14px;color:var(--text-2);line-height:1.5">
-                <strong>Charte Fair-Play &amp; Règlement BDS :</strong> Je certifie que tous les joueurs appartiennent bien à la promo <strong>${esc(f.promo)}</strong> et s'engagent à respecter les horaires, les arbitres et l'esprit sportif des Interpromos ${esc(EDITION.year)}.
-              </span>
+              <span id="form-charter-text" style="font-size:14px;color:var(--text-2);line-height:1.5">${charterText(f)}</span>
             </label>
             ${s.err.rules ? `<span class="field-error" style="font-size:13px;color:var(--error)">${esc(s.err.rules)}</span>` : ''}
 

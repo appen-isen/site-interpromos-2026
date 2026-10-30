@@ -83,7 +83,11 @@ export async function createSignedUpload(mime) {
     const signed = data.url ? new URL(data.url, `${sb.url}/storage/v1/`) : null;
     const token = signed?.searchParams.get('token');
     if (!res.ok || !token) {
-        throw new Error(`SUPABASE_SIGN_FAILED (${res.status}) ${data.message || data.error || ''}`);
+        const error = new Error(`SUPABASE_SIGN_FAILED (${res.status}) ${data.message || data.error || ''}`);
+        error.status = res.status;
+        error.reason = String(data.message || data.error || '');
+        error.bucket = sb.bucket;
+        throw error;
     }
     return {
         objectPath,
