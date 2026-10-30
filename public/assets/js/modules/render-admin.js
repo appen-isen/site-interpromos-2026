@@ -149,6 +149,9 @@ export function renderAdmin(d) {
           <button data-action="refresh-state" class="hover-text-light" style="padding:10px 24px;border:0;background:none;color:var(--text-2);font:600 13px var(--font-body);cursor:pointer;text-align:left">
             ↻ Actualiser les données
           </button>
+          <a href="/docs/" class="hover-text-light" style="padding:10px 24px;color:var(--text-2);font:600 13px var(--font-body);text-decoration:none">
+            ⌘ Documentation API
+          </a>
           <button data-action="nav" data-page="home" class="hover-text-light" style="padding:10px 24px;border:0;background:none;color:var(--muted);font:600 13px var(--font-body);cursor:pointer;text-align:left">
             ← Voir le site public
           </button>

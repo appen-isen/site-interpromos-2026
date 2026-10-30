@@ -368,6 +368,9 @@ export function attachEventListeners(render, go) {
     } else if (action === 'planning-sport') {
       state.sport = btn.dataset.sport;
       render();
+    } else if (action === 'teams-filter') {
+      state[btn.dataset.key] = btn.dataset.value;
+      render();
     } else if (action === 'go-sport-teams') {
       go('equipes', { sportF: btn.dataset.sport, promoF: 'Toutes' });
     } else if (action === 'planning-day' || action === 'go-planning-day') {
@@ -593,9 +596,6 @@ export function attachEventListeners(render, go) {
           target.style.borderColor = 'var(--line)';
         }
         updateLiveInscriptionPreview();
-      } else if (field === 'promoF' || field === 'sportF') {
-        state[field] = target.value;
-        render();
       }
     } else if (target.dataset.playerIndex !== undefined) {
       const idx = Number(target.dataset.playerIndex);

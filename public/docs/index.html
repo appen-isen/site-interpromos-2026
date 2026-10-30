@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Documentation API · Espace BDS</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.34.1/swagger-ui.css">
+    <style>
+        body { margin: 0; background: #fafafa; font-family: system-ui, sans-serif; }
+        .ip-bar { display: flex; align-items: center; gap: 12px; padding: 14px 24px; background: #0f0e0e; color: #f3f2f2; font-weight: 600; font-size: 15px; }
+        .ip-bar strong { color: #f0243f; font-style: italic; text-transform: uppercase; letter-spacing: .02em; }
+        .ip-bar a { margin-left: auto; color: #a8a29f; text-decoration: none; font-size: 13px; }
+        .ip-bar a:hover { color: #fff; }
+        .ip-locked { max-width: 520px; margin: 80px auto; padding: 32px; background: #fff; border: 1px solid #e0d9d5; color: #1a1716; line-height: 1.6; }
+        .ip-locked a { color: #d6142f; font-weight: 600; }
+        .swagger-ui .topbar { display: none; }
+    </style>
+</head>
+<body>
+    <div class="ip-bar"><strong>Espace BDS</strong> Documentation de l'API <a href="/#admin">← Retour à l'Espace BDS</a></div>
+    <div id="swagger-ui"></div>
+    <!-- Cette page ne contient aucune donnée : la spécification est chargée avec le jeton de l'admin connecté -->
+    <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.34.1/swagger-ui-bundle.js" crossorigin></script>
+    <script>
+        (async () => {
+            const root = document.getElementById('swagger-ui');
+            const locked = message => {
+                root.innerHTML = '<div class="ip-locked"><p>' + message + '</p><p><a href="/#admin">Se connecter à l\'Espace BDS</a>, puis ouvrir « Documentation API » depuis le menu.</p></div>';
+            };
+            let token = null;
+            try { token = sessionStorage.getItem('ip_bds_token'); } catch (e) {}
+            if (!token) return locked('La documentation de l\'API est réservée aux membres du BDS.');
+
+            const url = '/api/docs/openapi.yaml';
+            const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } }).catch(() => null);
+            if (!res || !res.ok) return locked('Votre session BDS a expiré ou n\'a pas accès à la documentation.');
+
+            window.ui = SwaggerUIBundle({
+                url,
+                dom_id: '#swagger-ui',
+                requestInterceptor: req => { req.headers.Authorization = 'Bearer ' + token; return req; },
+                deepLinking: true,
+                tryItOutEnabled: false,
+                supportedSubmitMethods: [],
+                docExpansion: 'list',
+                defaultModelsExpandDepth: 0
+            });
+        })();
+    </script>
+</body>
+</html>

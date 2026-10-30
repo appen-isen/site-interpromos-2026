@@ -15,7 +15,7 @@ export function renderPublicHeader(liveList) {
   return `
     ${showTicker ? `
       <div style="display:flex;align-items:stretch;background:var(--bg-deep);border-bottom:1px solid var(--line);overflow-x:auto;white-space:nowrap">
-        <div style="display:flex;align-items:center;gap:8px;padding:10px 20px;background:var(--accent);font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:12px;flex:none">
+        <div style="display:flex;align-items:center;gap:8px;padding:10px 20px;background:var(--accent);color:var(--on-accent);font-weight:700;letter-spacing:.1em;text-transform:uppercase;font-size:12px;flex:none">
           <span class="pulse-dot-white"></span>En direct
         </div>
         ${liveList.map(g => `
