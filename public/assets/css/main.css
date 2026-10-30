@@ -1,22 +1,92 @@
 @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;800&family=Barlow+Condensed:ital,wght@1,600;1,700;1,800;1,900&display=swap');
 
 :root {
-  --color-bg: #0f0e0e;
-  --color-surface: #1a1817;
-  --color-surface-dark: #141312;
-  --color-text: #f3f2f2;
-  --color-muted: #a8a29f;
-  --color-dim: #6d6866;
-  --color-border: #2c2928;
-  --color-border-strong: #4a4644;
-  --color-accent: #f0243f;
-  --color-accent-hover: #d01b35;
-  --color-error: #ff5a6f;
-
   --font-heading: "Archivo", system-ui, -apple-system, sans-serif;
   --font-condensed: "Barlow Condensed", sans-serif;
   --font-body: "Archivo", system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, Menlo, Consolas, monospace;
+}
+
+/* Thème sombre (par défaut) */
+:root,
+[data-theme="dark"] {
+  --scheme: dark;
+  --bg: #0f0e0e;
+  --bg-deep: #0a0909;
+  --surface: #141312;
+  --surface-2: #1a1817;
+  --surface-3: #1c1a19;
+  --surface-4: #222020;
+  --line: #2c2928;
+  --line-soft: #1f1d1c;
+  --line-strong: #4a4644;
+  --text: #f3f2f2;
+  --text-2: #c9c4c2;
+  --muted: #a8a29f;
+  --dim: #6d6866;
+  --dim-2: #8a8482;
+  --accent: #f0243f;
+  --accent-hover: #d01b35;
+  --on-accent: #ffffff;
+  --logo-bg: #ffffff;
+  --success: #4ade80;
+  --success-text: #9fe0b5;
+  --success-bg: #0f2418;
+  --success-line: #2f6b45;
+  --error: #ff5a6f;
+  --error-text: #ffb3bd;
+  --error-bg: #2a0f13;
+  --info: #6fb3ff;
+}
+
+/* Thème clair */
+[data-theme="light"] {
+  --scheme: light;
+  --bg: #f6f4f3;
+  --bg-deep: #eeebe9;
+  --surface: #ffffff;
+  --surface-2: #f1edeb;
+  --surface-3: #ebe6e3;
+  --surface-4: #e3ddda;
+  --line: #e0d9d5;
+  --line-soft: #ece7e4;
+  --line-strong: #a9a09b;
+  --text: #1a1716;
+  --text-2: #3d3836;
+  --muted: #645d5a;
+  --dim: #8a817d;
+  --dim-2: #756d69;
+  --accent: #d6142f;
+  --accent-hover: #b30f27;
+  --on-accent: #ffffff;
+  --logo-bg: #ffffff;
+  --success: #15803d;
+  --success-text: #166534;
+  --success-bg: #e8f5ec;
+  --success-line: #8fcfa4;
+  --error: #c8102e;
+  --error-text: #9b1124;
+  --error-bg: #fdecef;
+  --info: #1d64c0;
+}
+
+/* Anciens noms, conservés pour compatibilité */
+:root {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface-2);
+  --color-surface-dark: var(--surface);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-dim: var(--dim);
+  --color-border: var(--line);
+  --color-border-strong: var(--line-strong);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-error: var(--error);
+}
+
+html {
+  color-scheme: var(--scheme);
 }
 
 *, *::before, *::after {
@@ -71,7 +141,7 @@ input::placeholder {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--on-accent);
   animation: pulse 1.2s infinite;
   display: inline-block;
 }
@@ -87,53 +157,53 @@ input::placeholder {
 
 /* Interactive hover helpers matching prototype */
 .hover-surface:hover {
-  background: #1a1817 !important;
+  background: var(--surface-2) !important;
 }
 
 .hover-surface-2:hover {
-  background: #221f1e !important;
+  background: var(--surface-4) !important;
 }
 
 .hover-row-dark:hover {
-  background: #141312 !important;
+  background: var(--surface) !important;
 }
 
 .hover-accent:hover {
-  background: #d01b35 !important;
+  background: var(--accent-hover) !important;
 }
 
 .hover-accent-fill:hover {
-  background: #f0243f !important;
+  background: var(--accent) !important;
 }
 
 .hover-border-white:hover {
-  border-color: #fff !important;
+  border-color: var(--text) !important;
 }
 
 .hover-border-light:hover {
-  border-color: #f3f2f2 !important;
+  border-color: var(--text) !important;
 }
 
 .hover-border-mid:hover {
-  border-color: #4a4644 !important;
+  border-color: var(--line-strong) !important;
 }
 
 .hover-text-light:hover {
-  color: #f3f2f2 !important;
+  color: var(--text) !important;
 }
 
 .hover-admin-btn:hover {
-  color: #f3f2f2 !important;
-  border-color: #4a4644 !important;
+  color: var(--text) !important;
+  border-color: var(--line-strong) !important;
 }
 
 .hover-photo:hover {
-  outline: 2px solid #f0243f;
+  outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
 
 .input-focus:focus {
-  border-color: #f0243f !important;
+  border-color: var(--accent) !important;
 }
 
 /* Responsive adjustments */
@@ -203,7 +273,7 @@ input::placeholder {
   position: relative;
   overflow: hidden;
   cursor: zoom-in;
-  background: repeating-linear-gradient(135deg, #1c1a19 0 10px, #222020 10px 20px);
+  background: repeating-linear-gradient(135deg, var(--surface-3) 0 10px, var(--surface-4) 10px 20px);
   outline: 2px solid transparent;
   outline-offset: -2px;
   transition: outline-color .2s ease;
@@ -211,7 +281,7 @@ input::placeholder {
 
 .gallery-tile:hover,
 .gallery-tile:focus-visible {
-  outline-color: #f0243f;
+  outline-color: var(--accent);
 }
 
 /* Squelette animé tant que le média charge */
@@ -301,7 +371,7 @@ input::placeholder {
   z-index: 1;
   width: 34px;
   height: 34px;
-  background: #f0243f;
+  background: var(--accent);
   display: grid;
   place-items: center;
   transition: transform .3s cubic-bezier(.2,.8,.2,1);
@@ -316,7 +386,7 @@ input::placeholder {
 }
 
 .album-chip:hover {
-  border-color: #f3f2f2 !important;
+  border-color: var(--text) !important;
   transform: translateY(-2px);
 }
 
@@ -465,7 +535,7 @@ button.is-loading::before {
   margin-right: 10px;
   vertical-align: -2px;
   border: 2px solid rgba(255,255,255,.35);
-  border-top-color: #fff;
+  border-top-color: var(--on-accent);
   border-radius: 50%;
   animation: spin .8s linear infinite;
 }
@@ -491,7 +561,7 @@ button.is-loading::before {
 
 /* Accueil / planning / live admin (maquette Interpromos 2026) */
 .score-btn-minus:hover:not(:disabled) {
-  border-color: #4a4644 !important;
+  border-color: var(--line-strong) !important;
 }
 
 .score-btn-minus:disabled {
@@ -509,7 +579,7 @@ button.is-loading::before {
   }
   .home-split-grid > div:first-child {
     border-right: 0 !important;
-    border-bottom: 1px solid #2c2928;
+    border-bottom: 1px solid var(--line);
   }
 }
 
@@ -553,5 +623,34 @@ button.is-loading::before {
   .chip-group-label {
     flex-basis: 100%;
     margin: 8px 0 0 !important;
+  }
+}
+
+/* Bouton clair / sombre */
+.theme-toggle {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color .2s ease, background-color .2s ease, transform .3s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--text);
+  transform: rotate(-15deg);
+}
+
+/* Changement de thème en douceur (sauf si l'appareil demande moins d'animations) */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-transition,
+  html.theme-transition * {
+    transition: background-color .25s ease, color .25s ease, border-color .25s ease !important;
   }
 }
