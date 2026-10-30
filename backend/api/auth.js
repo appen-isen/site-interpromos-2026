@@ -21,6 +21,21 @@ export const loginRateLimit = createRateLimit({
     message: 'Trop de tentatives de connexion. Réessayez dans 15 minutes.'
 });
 
+const isLocalUrl = url => /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:|\/|$)/i.test(url);
+
+function publicSiteUrl(request) {
+    const fromRequest = `${request.protocol}://${request.get('host')}`;
+    const configured = String(process.env.APP_URL || '').trim();
+    const vercelDomain = process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '';
+
+    let url = configured || fromRequest;
+    if (process.env.VERCEL_ENV === 'production' && isLocalUrl(url)) {
+        console.error(`APP_URL pointe vers une adresse locale (${url}) : utilisation du domaine de production.`);
+        url = vercelDomain || fromRequest;
+    }
+    return `${url.replace(/\/+$/, '')}/`;
+}
+
 const sessionResponse = ({ token, refreshToken, expiresAt, email }) =>
     ({ authenticated: true, role: ADMIN_ROLE, token, refreshToken, expiresAt, email });
 
@@ -99,8 +114,7 @@ export async function api_auth_recover(request, response) {
     if (!provider?.sendRecoveryEmail) return response.status(503).json({ error: UNAVAILABLE });
 
     // Le lien ramène à la racine du site, avec #access_token=…&type=recovery
-    const origin = `${request.protocol}://${request.get('host')}`;
-    const redirectTo = `${String(process.env.APP_URL || origin).replace(/\/+$/, '')}/`;
+    const redirectTo = publicSiteUrl(request);
     await provider.sendRecoveryEmail(email, redirectTo).catch(err => console.error('Mot de passe oublié :', err.message));
     response.json({ sent: true });
 }

@@ -45,6 +45,9 @@ function checkEnv() {
     }
 
     if (IS_DEPLOYED && !APP_URL) warn(G, 'APP_URL', 'non définie : le site déployé ne sera pas testé');
+    if (IS_DEPLOYED && /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(APP_URL)) {
+        fail(G, 'APP_URL', `${APP_URL} : adresse locale, les liens « mot de passe oublié » ramèneraient vers votre poste`);
+    }
 
     try {
         const url = new URL(process.env.DATABASE_URL);

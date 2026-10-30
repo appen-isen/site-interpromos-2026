@@ -1,5 +1,5 @@
 import { pool, query } from './db.js';
-import { setDatabaseRole } from './environment.js';
+import { getDatabaseRole, setDatabaseRole } from './environment.js';
 
 // Édition par défaut, utilisée uniquement pour initialiser une base vierge (modifiable ensuite dans l'Espace BDS)
 export const DEFAULT_EDITION = { annee: 2026, dateDebut: '2026-11-03', heureDebut: '13:00', lieu: 'ISEN Nantes' };
@@ -73,20 +73,16 @@ export async function ensureBaseReferences(client = pool) {
 }
 
 async function runEnsureBaseReferences(client, { backfillAlbumDates = false } = {}) {
-    // Le site déployé marque sa base : « production » protège ensuite cette base de tout test
-    const deployedRole = { production: 'production', preview: 'preview' }[process.env.VERCEL_ENV];
-    if (deployedRole) {
-        await setDatabaseRole(deployedRole, { client }).catch(err => {
-            console.error(`ATTENTION : la base de ce déploiement « ${deployedRole} » est mal configurée. ${err.message}`);
+    // Production : marque sa base « production » (la protège ensuite de tout test).
+    // Prévisualisations Vercel (une par branche) : utilisent la base de développement ; on vérifie
+    // seulement qu'elles ne tournent pas sur la base de production.
+    if (process.env.VERCEL_ENV === 'production') {
+        await setDatabaseRole('production', { client }).catch(err => {
+            console.error(`ATTENTION : la base du site de production est mal configurée. ${err.message}`);
         });
+    } else if (process.env.VERCEL_ENV === 'preview' && (await getDatabaseRole(client)) === 'production') {
+        console.error('ATTENTION : ce déploiement de prévisualisation utilise la base de PRODUCTION. Donnez-lui la base de développement dans Vercel (variables « Preview »).');
     }
-
-    await client.query(
-        `INSERT INTO edition (annee, date_debut, heure_debut, lieu) VALUES ($1, $2, $3, $4) ON CONFLICT (unique_ligne) DO NOTHING`,
-        [DEFAULT_EDITION.annee, DEFAULT_EDITION.dateDebut, DEFAULT_EDITION.heureDebut, DEFAULT_EDITION.lieu]
-    );
-    const { rows: editionRows } = await client.query(`SELECT TO_CHAR(date_debut, 'YYYY-MM-DD') AS debut FROM edition LIMIT 1`);
-    const firstDay = editionRows[0].debut;
 
     for (const p of DEFAULT_PROMOS) {
         await client.query(
