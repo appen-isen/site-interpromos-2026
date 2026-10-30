@@ -1,4 +1,4 @@
-import { esc, albumPeriod, formatAlbumDates, groupAlbumsByPeriod } from './utils.js';
+import { esc, mapLink, mapUrl, albumPeriod, formatAlbumDates, groupAlbumsByPeriod } from './utils.js';
 import { state, SPORTS, SHORT, PROMOS, MASCOT, VENUE, DAYS, SIZE, EDITION } from './state.js';
 
 const SPORT_META = [
@@ -49,7 +49,7 @@ export function renderHome(d) {
     <div class="hero-grid" style="display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);border-bottom:1px solid var(--line)">
       <div style="padding:72px 48px 64px;display:flex;flex-direction:column;gap:28px">
         <div style="display:flex;align-items:center;gap:10px;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)">
-          <span style="width:24px;height:2px;background:var(--accent)"></span>${esc(EDITION.range)} · ${esc(EDITION.venue)}
+          <span style="width:24px;height:2px;background:var(--accent)"></span>${esc(EDITION.range)} · ${mapLink(EDITION.venue, 'color:inherit;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:4px')}
         </div>
         <h1 style="font:italic 900 120px/.86 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0">
           Une promo.<br><span style="color:var(--accent)">Un titre.</span>
@@ -132,7 +132,11 @@ export function renderHome(d) {
         ${avant ? `
           <h2 style="${BIG};margin:0 0 20px">Infos pratiques</h2>
           <div style="padding:16px 0;border-top:1px solid var(--line)">
-            <div style="font-size:12px;color:var(--muted)">Lieux</div>
+            <div style="font-size:12px;color:var(--muted)">Adresse</div>
+            <div style="font-size:16px;margin-top:4px">${esc(EDITION.venue)} · <a href="${esc(mapUrl(EDITION.venue))}" target="_blank" rel="noopener noreferrer" style="color:var(--accent);font-weight:600;text-decoration:none">voir sur la carte →</a></div>
+          </div>
+          <div style="padding:16px 0;border-top:1px solid var(--line)">
+            <div style="font-size:12px;color:var(--muted)">Terrains</div>
             <div style="font-size:16px;margin-top:4px">${esc(venues.join(' · ') || 'ISEN Nantes')}</div>
           </div>
           <div style="padding:16px 0;border-top:1px solid var(--line)">
