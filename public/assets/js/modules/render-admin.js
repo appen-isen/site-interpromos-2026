@@ -759,8 +759,8 @@ function renderAdminInscriptions(s, regTone) {
 
 function renderMediaThumb(p, height) {
   return p.type === 'video'
-    ? `<video src="${esc(p.url)}#t=0.1" muted playsinline preload="metadata" style="width:100%;height:${height};object-fit:cover;display:block;background:#000"></video>`
-    : `<img src="${esc(p.url)}" alt="${esc(p.caption)}" loading="lazy" style="width:100%;height:${height};object-fit:cover;display:block;background:var(--surface-3)">`;
+    ? `<video class="media-thumb" src="${esc(p.url)}#t=0.1" muted playsinline preload="metadata" style="width:100%;height:${height};object-fit:cover;display:block;background:#000"></video>`
+    : `<img class="media-thumb" src="${esc(p.url)}" alt="${esc(p.caption)}" loading="lazy" style="width:100%;height:${height};object-fit:cover;display:block;background:var(--surface-3)">`;
 }
 
 function renderAlbumForm(f) {

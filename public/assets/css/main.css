@@ -5,6 +5,10 @@
   --font-condensed: "Barlow Condensed", sans-serif;
   --font-body: "Archivo", system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, Menlo, Consolas, monospace;
+  /* Photos et vidéos : coins légèrement arrondis + grain argentique */
+  --media-radius: 18px;
+  --media-radius-sm: 8px;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* Thème sombre (par défaut) */
@@ -103,6 +107,25 @@ html, body {
   line-height: 1.55;
   font-weight: 400;
   -webkit-font-smoothing: antialiased;
+}
+
+/* Grain léger sur tout le site (sous la visionneuse, qui reste nette) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: var(--grain);
+  background-size: 160px;
+  opacity: var(--page-grain-opacity, .07);
+  pointer-events: none;
+}
+
+/* Fond clair : grain contrasté et opaque en multiply, sinon il disparaît sur le blanc */
+[data-theme="light"] body::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3CfeComponentTransfer%3E%3CfeFuncR type='linear' slope='3' intercept='-1'/%3E%3CfeFuncG type='linear' slope='3' intercept='-1'/%3E%3CfeFuncB type='linear' slope='3' intercept='-1'/%3E%3CfeFuncA type='linear' slope='0' intercept='1'/%3E%3C/feComponentTransfer%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  mix-blend-mode: multiply;
+  opacity: .14;
 }
 
 a {
@@ -272,6 +295,8 @@ input::placeholder {
 .gallery-tile {
   position: relative;
   overflow: hidden;
+  border-radius: var(--media-radius);
+  isolation: isolate;
   cursor: zoom-in;
   background: repeating-linear-gradient(135deg, var(--surface-3) 0 10px, var(--surface-4) 10px 20px);
   outline: 2px solid transparent;
@@ -294,8 +319,29 @@ input::placeholder {
   animation: shimmer 1.6s linear infinite;
 }
 
-.gallery-tile:has(.is-loaded)::before {
-  display: none;
+/* Une fois le média chargé, le squelette devient la couche de grain */
+.gallery-tile:has(.is-loaded)::before,
+.media-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: var(--grain);
+  background-size: 160px;
+  animation: none;
+  mix-blend-mode: overlay;
+  opacity: .4;
+  pointer-events: none;
+}
+
+/* Cadre arrondi + grain pour l'image / la vidéo d'accueil */
+.media-frame {
+  border-radius: var(--media-radius);
+  isolation: isolate;
+}
+
+.media-thumb {
+  border-radius: var(--media-radius-sm);
 }
 
 .gallery-tile.anim-in {
@@ -483,6 +529,7 @@ input::placeholder {
   display: block;
   box-shadow: 0 30px 80px rgba(0,0,0,.6);
   background: #000;
+  border-radius: var(--media-radius);
 }
 
 .lightbox .lb-nav {
@@ -609,7 +656,7 @@ button.is-loading::before {
   position: absolute;
   right: 16px;
   bottom: 16px;
-  z-index: 1;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 6px;
