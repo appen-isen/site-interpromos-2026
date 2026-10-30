@@ -18,7 +18,8 @@
     "db:clean": "node scripts/clean-db.js",
     "db:role": "node scripts/set-db-role.js",
     "db:role:prod": "node --env-file=.env.production scripts/set-db-role.js",
-    "admin:grant": "node scripts/grant-admin.js"
+    "admin:grant": "node scripts/grant-admin.js",
+    "admin:grant:prod": "node --env-file=.env.production scripts/grant-admin.js"
   },
   "dependencies": {
     "express": "^5.3.0",
