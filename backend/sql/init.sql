@@ -133,7 +133,7 @@ CREATE TABLE IF NOT EXISTS photos(
     grand_format BOOLEAN NOT NULL DEFAULT FALSE,
     type_media TEXT NOT NULL DEFAULT 'image' CHECK(type_media IN ('image', 'video')),
     emplacement TEXT,           -- ex : 'hero' = média mis en avant en haut de l'accueil
-    chemin_stockage TEXT,       -- 'local:<fichier>' ou 'supabase:<chemin>' (pour la suppression)
+    chemin_stockage TEXT,       -- 'local:<fichier>' ou 'supabase:<chemin>' 
 
     PRIMARY KEY (id),
     FOREIGN KEY (id_album) REFERENCES albums(id) ON DELETE CASCADE
@@ -147,6 +147,7 @@ CREATE TABLE IF NOT EXISTS edition(
     date_debut DATE NOT NULL,                  -- jour 1 ; les jours 2 et 3 suivent
     heure_debut VARCHAR(5) NOT NULL DEFAULT '13:00',
     lieu TEXT NOT NULL DEFAULT 'ISEN Nantes',
+    contact_email TEXT,                        -- adresse de contact affichée sur le site (facultative)
     modifie_le TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
 
     PRIMARY KEY (id),
@@ -161,6 +162,7 @@ ALTER TABLE photos ADD COLUMN IF NOT EXISTS emplacement TEXT;
 ALTER TABLE photos ADD COLUMN IF NOT EXISTS chemin_stockage TEXT;
 ALTER TABLE albums ADD COLUMN IF NOT EXISTS date_debut DATE;
 ALTER TABLE albums ADD COLUMN IF NOT EXISTS date_fin DATE;
+ALTER TABLE edition ADD COLUMN IF NOT EXISTS contact_email TEXT;
 
 
 CREATE TABLE IF NOT EXISTS limites_requetes(

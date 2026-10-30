@@ -1759,6 +1759,7 @@ function buildEdition(row) {
         end: dates[dates.length - 1],
         time: row.heure,
         venue: row.lieu,
+        contact: row.contact || null,
         startsAt: `${start}T${row.heure}:00${parisOffset(start, row.heure)}`,
         range: formatRange(start, dates[dates.length - 1]),
         days: dates.map((iso, i) => [
@@ -1772,21 +1773,23 @@ function buildEdition(row) {
 export async function dbGetEdition() {
     await ensureBaseReferences();
     const { rows } = await query(
-        `SELECT annee, TO_CHAR(date_debut, 'YYYY-MM-DD') AS debut, heure_debut AS heure, lieu FROM edition LIMIT 1`
+        `SELECT annee, TO_CHAR(date_debut, 'YYYY-MM-DD') AS debut, heure_debut AS heure, lieu, contact_email AS contact
+         FROM edition LIMIT 1`
     );
     const row = rows[0] || {
         annee: DEFAULT_EDITION.annee,
         debut: DEFAULT_EDITION.dateDebut,
         heure: DEFAULT_EDITION.heureDebut,
-        lieu: DEFAULT_EDITION.lieu
+        lieu: DEFAULT_EDITION.lieu,
+        contact: null
     };
     return buildEdition(row);
 }
 
 /**
- * Modifie l'édition. Lève INVALID_YEAR / INVALID_DATE / YEAR_MISMATCH / INVALID_TIME / INVALID_VENUE.
+ * Modifie l'édition. Lève INVALID_YEAR / INVALID_DATE / YEAR_MISMATCH / INVALID_TIME / INVALID_VENUE / INVALID_CONTACT.
  */
-export async function dbUpdateEdition({ year, start, time, venue }) {
+export async function dbUpdateEdition({ year, start, time, venue, contact }) {
     const annee = Number(year);
     if (!Number.isInteger(annee) || annee < 2000 || annee > 2100) throw new Error('INVALID_YEAR');
     const debut = String(start || '');
@@ -1796,11 +1799,13 @@ export async function dbUpdateEdition({ year, start, time, venue }) {
     if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(heure)) throw new Error('INVALID_TIME');
     const lieu = String(venue ?? DEFAULT_EDITION.lieu).trim().slice(0, 80);
     if (!lieu) throw new Error('INVALID_VENUE');
+    const contactEmail = String(contact ?? '').trim().toLowerCase().slice(0, 120) || null;
+    if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) throw new Error('INVALID_CONTACT');
 
     await ensureBaseReferences();
     await query(
-        `UPDATE edition SET annee = $1, date_debut = $2, heure_debut = $3, lieu = $4, modifie_le = clock_timestamp()`,
-        [annee, debut, heure, lieu]
+        `UPDATE edition SET annee = $1, date_debut = $2, heure_debut = $3, lieu = $4, contact_email = $5, modifie_le = clock_timestamp()`,
+        [annee, debut, heure, lieu, contactEmail]
     );
     return dbGetEdition();
 }
