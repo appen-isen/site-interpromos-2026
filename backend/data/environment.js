@@ -1,10 +1,11 @@
-import { query } from './db.js';
+import { pool, query } from './db.js';
 
 
 export const DATABASE_ROLES = ['production', 'preview', 'development', 'test'];
 
 /** Rôle de la base, ou null si elle n'est pas encore marquée (ou si la table n'existe pas encore). */
-export async function getDatabaseRole(client = { query }) {
+
+export async function getDatabaseRole(client = pool) {
     try {
         const { rows } = await client.query(`SELECT valeur FROM meta_base WHERE cle = 'environnement'`);
         return rows[0]?.valeur || null;
