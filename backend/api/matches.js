@@ -43,7 +43,7 @@ export async function api_put_match(request, response) {
     try {
         const result = await dbUpdateMatch(id, request.body || {});
         if (!result) {
-            return response.status(404).json({ error: 'Match introuvable en base de données.' });
+            return response.status(404).json({ error: 'Match introuvable.' });
         }
         const standings = await dbGetStandings();
         response.json({ ...result, standings });
@@ -64,7 +64,7 @@ export async function api_delete_match(request, response) {
     try {
         const result = await dbDeleteMatch(id);
         if (!result) {
-            return response.status(404).json({ error: 'Match introuvable en base de données.' });
+            return response.status(404).json({ error: 'Match introuvable.' });
         }
         const standings = await dbGetStandings();
         response.json({ ...result, standings });
@@ -93,7 +93,7 @@ export async function api_patch_match_score(request, response) {
     try {
         const match = await dbUpdateMatchScore(id, { teamIndex, delta, scoreA, scoreB });
         if (!match) {
-            return response.status(404).json({ error: 'Match introuvable en base de données.' });
+            return response.status(404).json({ error: 'Match introuvable.' });
         }
         const standings = await dbGetStandings();
         response.json({ match, standings });
@@ -116,7 +116,7 @@ export async function api_patch_match_status(request, response) {
     try {
         const match = await dbUpdateMatchStatus(id, { status, resetScores: Boolean(resetScores) });
         if (!match) {
-            return response.status(404).json({ error: 'Match introuvable en base de données.' });
+            return response.status(404).json({ error: 'Match introuvable.' });
         }
         const standings = await dbGetStandings();
         response.json({ match, standings });

@@ -394,6 +394,17 @@ export function renderTeams(d) {
   `;
 }
 
+// Engagement
+export function charterText(f) {
+  const players = f.players.map(x => x.trim()).filter(Boolean).length;
+  const team = f.team.trim() ? `l'équipe <strong>« ${esc(f.team.trim())} »</strong>` : 'mon équipe';
+  const who = players === 0 ? 'tous les joueurs de ' + team
+    : players === 1 ? `le joueur inscrit dans ${team}`
+    : `les <strong>${players} joueurs</strong> de ${team}`;
+  const captain = f.captain.trim() ? `, capitaine <strong>${esc(f.captain.trim())}</strong>` : '';
+  return `<strong>Charte Fair-Play &amp; Règlement BDS :</strong> Je certifie que ${who} (<strong>${esc(SPORTS[f.sport] || '')}</strong>${captain}) ${players === 1 ? 'appartient' : 'appartiennent'} bien à la promo <strong>${esc(f.promo)}</strong> et ${players === 1 ? "s'engage" : "s'engagent"} à respecter les horaires, les arbitres et l'esprit sportif des Interpromos ${esc(EDITION.year)}.`;
+}
+
 export function renderInscription(d) {
   const { s } = d;
   const f = s.form;
@@ -726,9 +737,7 @@ export function renderInscription(d) {
           <section style="background:var(--surface);border:1px solid var(--line);padding:28px;display:flex;flex-direction:column;gap:18px">
             <label style="display:flex;align-items:flex-start;gap:12px;cursor:pointer">
               <input data-field="form-rules" type="checkbox" ${f.rules ? 'checked' : ''} style="width:18px;height:18px;margin-top:2px;accent-color:var(--accent)">
-              <span style="font-size:14px;color:var(--text-2);line-height:1.5">
-                <strong>Charte Fair-Play &amp; Règlement BDS :</strong> Je certifie que tous les joueurs appartiennent bien à la promo <strong>${esc(f.promo)}</strong> et s'engagent à respecter les horaires, les arbitres et l'esprit sportif des Interpromos ${esc(EDITION.year)}.
-              </span>
+              <span id="form-charter-text" style="font-size:14px;color:var(--text-2);line-height:1.5">${charterText(f)}</span>
             </label>
             ${s.err.rules ? `<span class="field-error" style="font-size:13px;color:var(--error)">${esc(s.err.rules)}</span>` : ''}
 
