@@ -66,7 +66,7 @@ export function renderHome(d) {
           </button>
         </div>
       </div>
-      <div style="background:repeating-linear-gradient(135deg,var(--surface-3) 0 10px,var(--surface-4) 10px 20px);position:relative;min-height:420px;overflow:hidden">
+      <div class="media-frame" style="background:repeating-linear-gradient(135deg,var(--surface-3) 0 10px,var(--surface-4) 10px 20px);position:relative;min-height:420px;overflow:hidden">
         ${renderHeroMedia(hero)}
       </div>
     </div>
