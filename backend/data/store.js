@@ -84,6 +84,13 @@ async function runEnsureBaseReferences(client, { backfillAlbumDates = false } = 
         console.error('ATTENTION : ce déploiement de prévisualisation utilise la base de PRODUCTION. Donnez-lui la base de développement dans Vercel (variables « Preview »).');
     }
 
+    await client.query(
+        `INSERT INTO edition (annee, date_debut, heure_debut, lieu) VALUES ($1, $2, $3, $4) ON CONFLICT (unique_ligne) DO NOTHING`,
+        [DEFAULT_EDITION.annee, DEFAULT_EDITION.dateDebut, DEFAULT_EDITION.heureDebut, DEFAULT_EDITION.lieu]
+    );
+    const { rows: editionRows } = await client.query(`SELECT TO_CHAR(date_debut, 'YYYY-MM-DD') AS debut FROM edition LIMIT 1`);
+    const firstDay = editionRows[0].debut;
+
     for (const p of DEFAULT_PROMOS) {
         await client.query(
             `INSERT INTO promos (code, mascotte) VALUES ($1, $2) ON CONFLICT (code) DO NOTHING`,
