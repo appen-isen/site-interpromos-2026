@@ -1,48 +1,50 @@
-# Interpromos 2026
+# Site Interpromos
 
-Les Interpromos est un évènement sportif organisé par le club BDS au sein de l'Institut Supérieur de l'Électronique et du Numérique (ISEN) à Nantes.
-Dans l'objectif de faciliter la communication entre participants, spectateurs et organisateurs, le club Appen se lance dans un projet de création de site permettant d'afficher notamment le planning des matchs, le classement et informations utiles au bon déroulement du tournoi.
+Site du tournoi inter-promotions de l'ISEN Nantes, organisé par le BDS et le club APPEN : planning, scores en direct, classements, inscriptions des équipes et galerie photo/vidéo. Le BDS gère tout depuis l'Espace BDS (`/#admin`).
 
-Le projet est notamment proposé aux premières années pour se familiariser avec les langages du web.
+Node.js + Express pour l'API, PostgreSQL (Supabase en production), et un front en JavaScript sans framework ni étape de build.
 
-## Installation
+## Lancer le projet en local
 
-> [!IMPORTANT]
-> Vous devez avoir préalablement installé NodeJS et Git
+Il faut Node.js 20.6 ou plus (22 conseillé, voir `.nvmrc`) et une base PostgreSQL.
 
-Commencez par cloner le repository localement.
-```
-git clone https://github.com/appen-isen/site-interpromos-2026.git
-```
-
-Dans le dossier du projet, exécutez ensuite la commande suivante pour installer les dépendances.
-```
+```bash
 npm install
-```
-
-## Structure du projet
-
-Le projet utilise la bibliothèque Express.js (sur NodeJS) pour servir les fichiers du frontend et gérer les requêtes côté backend.
-- `pages/`, les différentes pages du site
-- `assets/`, les ressources utilisées par ces pages
- - `assets/css/`, plus spécifiquement les feuilles de style des pages
-  - `assets/js/main.css`, un fichier utilisé par toutes les pages
- - `assets/js/`, les codes JavaScript des pages
-- `backend/api`, gère les requêtes faites à l'API
-- `index.js`, déploie le serveur et renvoie toutes les requêtes au bon endroit
- (les pages HTML `pages/` et les images, le CSS et JavaScript qui tourne côté client `assets/`) ainsi que la gestion des requêtes côté backend (`backend/`).
-
-## Lancer le projet
-
-Pour lancer le projet localement, vous pouvez utiliser la commande suivante
-```
+cp .env.example .env    # renseigner DATABASE_URL, LOCAL_ADMIN_EMAIL et LOCAL_ADMIN_PASSWORD
 npm run dev
 ```
-Le site devrait être disponible en local depuis l'adresse `http://localhost:3000` (ou sur un autre port si modifié).
-Vous pouvez arrêter le serveur en faisant `Ctrl` + `C` dans la console.
-Il faudra redémarrer le serveur à chaque fois que vous modifiez du code dans `backend/` et `index.js` pour voir les changements.
 
-## Contribuer au projet
+Le site tourne sur http://localhost:3000. Au démarrage, le schéma de la base est créé ou mis à jour automatiquement, et la base est marquée « development ».
 
-Lorsque vous souhaitez contribuer au projet, vous ne pouvez pas directement faire des modifications sur la branche `main`.
-Créez une nouvelle branche spécifiquement pour la fonctionnalité que vous souhaitez implémenter (ex: `creation-page-liste-matchs`, `fix-bug-recherche-par-nom`, ...). Faites vos modifications de votre côté et, une fois votre code testé, faites une "Pull Request" pour passer vos changements sur la branche `main`. Le code sera rapidement vérifié par les autres collaborateurs pour être fusionné au reste du projet ou des modifications seront demandées pour améliorer votre code. Un conseil : n'utilisez pas l'IA à outrance. Ajouter une fonctionnalité c'est bien, mais comprendre comment le code que l'on a écrit marche, c'est encore mieux.
+Deux environnements, deux fichiers : `.env` pour le développement (utilisé par `npm run dev`), `.env.production` pour la production (utilisé par les commandes `…:prod`). Aucun des deux n'est versionné.
+
+En local, pas besoin de Supabase pour entrer dans l'Espace BDS : on se connecte avec `LOCAL_ADMIN_EMAIL` / `LOCAL_ADMIN_PASSWORD`. En production, les comptes du BDS sont dans Supabase Auth (voir [`backend/auth/`](backend/auth/README.md)). Aucun identifiant ni adresse n'est écrit dans le code : tout passe par `.env` ou par l'onglet « Édition » de l'Espace BDS (adresse de contact affichée sur le site).
+
+## Organisation du code
+
+| Dossier | Contenu |
+| --- | --- |
+| [`public/`](public/README.md) | Le site : pages HTML, CSS, JavaScript, documentation de l'API |
+| [`backend/api/`](backend/api/README.md) | Les routes de l'API, une par domaine (matchs, équipes, galerie…) |
+| [`backend/auth/`](backend/auth/README.md) | Connexion à l'Espace BDS (Supabase Auth) |
+| [`backend/data/`](backend/data/README.md) | Accès à la base et stockage des médias |
+| [`backend/sql/`](backend/sql/README.md) | Schéma de la base et migrations |
+| [`scripts/`](scripts/README.md) | Commandes de maintenance et de vérification (`db:migrate`, `db:clean`, `check`…) |
+
+`app.js` déclare l'application Express et toutes les routes. `index.js` ne sert qu'au lancement local.
+
+La documentation de l'API (`docs/openapi.yaml`) est réservée aux membres du BDS : une fois connecté à l'Espace BDS, menu « Documentation API ».
+
+Les tests ne tournent jamais sur la base de production : le site de production marque sa base, et la CI, `npm run db:clean`, le serveur local de test et les vérifications admin refusent ensuite de s'y connecter (voir [`scripts/`](scripts/README.md)).
+
+## Mise en production
+
+Le site et l'API sont déployés ensemble sur un seul projet Vercel, la base et les médias sont sur Supabase.
+
+1. Sur Supabase : créer un bucket public `medias` (Storage) et récupérer l'URL du *Transaction pooler* (port 6543).
+2. Sur Vercel : importer le dépôt, puis renseigner les variables d'environnement listées dans [`.env.example`](.env.example) (`DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `APP_URL`).
+3. Copier `.env.example` en `.env.production` avec les valeurs de production, puis lancer `npm run db:migrate:prod` (schéma à jour et base marquée « production »).
+4. Créer les comptes du BDS dans Supabase (*Authentication → Users*), puis leur donner l'accès : `npm run admin:grant -- prenom.nom@…`.
+
+Les comptes, mots de passe et sessions de l'Espace BDS sont gérés par Supabase Auth. Pensez à fermer les inscriptions publiques dans Supabase (*Authentication → Sign In / Providers*).
+

@@ -1,0 +1,49 @@
+name: Surveillance
+
+on:
+  schedule:
+    - cron: '0 5 * * *'   # tous les jours, 6 h 
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Environnement à vérifier
+        type: choice
+        options: [production, preview]
+        default: production
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: ${{ matrix.environment }}
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        environment: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('["{0}"]', inputs.environment) || '["preview","production"]') }}
+    environment: ${{ matrix.environment }}
+
+    env:
+      CHECK_ENV: ${{ matrix.environment }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_STORAGE_BUCKET: ${{ vars.SUPABASE_STORAGE_BUCKET }}
+      APP_URL: ${{ vars.APP_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Installation des dépendances
+        run: npm ci --omit=dev
+
+      - name: Vérification des connexions (lecture seule)
+        run: npm run check:connections
