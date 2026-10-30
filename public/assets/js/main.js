@@ -201,8 +201,8 @@ function renderPage(d) {
 }
 
 // Initialisation
-// Thème clair / sombre (déjà posé par <head>) : met à jour la barre mobile et suit le réglage de l'appareil
-initTheme(() => render());
+
+initTheme();
 
 // Lien « mot de passe oublié » reçu par e-mail : ouvre directement le formulaire de nouveau mot de passe
 

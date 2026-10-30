@@ -1,9 +1,8 @@
 // Thème clair / sombre.
-// Par défaut, le site suit le réglage de l'appareil ; un choix fait avec le bouton ☀ / ☾ est mémorisé.
+// Par défaut, le site est en thème clair ; un choix fait avec le bouton ☀ / ☾ est mémorisé.
 // Le thème est appliqué dès le chargement par un petit script dans <head> (pas de flash au démarrage).
 
 const STORAGE_KEY = 'ip_theme';
-const systemLight = window.matchMedia('(prefers-color-scheme: light)');
 
 function savedTheme() {
   try {
@@ -36,14 +35,9 @@ export function toggleTheme() {
   setTimeout(() => root.classList.remove('theme-transition'), 300);
 }
 
-/** Suit les changements du réglage de l'appareil tant que le visiteur n'a rien choisi. */
-export function initTheme(onChange) {
-  applyTheme(savedTheme() || (systemLight.matches ? 'light' : 'dark'));
-  systemLight.addEventListener('change', event => {
-    if (savedTheme()) return;
-    applyTheme(event.matches ? 'light' : 'dark');
-    onChange?.();
-  });
+/** Applique le thème mémorisé, sinon le thème clair. */
+export function initTheme() {
+  applyTheme(savedTheme() || 'light');
 }
 
 /** Bouton ☀ / ☾ affiché dans l'en-tête et dans l'Espace BDS. */
