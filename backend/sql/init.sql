@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS participants(
     id UUID NOT NULL DEFAULT gen_random_uuid(),
     cree_le TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),   -- ordre de création (les UUID ne sont pas ordonnés)
     id_promo UUID NOT NULL,
-    nom TEXT NOT NULL,
+    nom TEXT,                   -- facultatif : un joueur peut être saisi avec son seul prénom
     prenom TEXT NOT NULL,
 
     UNIQUE (nom, prenom),
@@ -154,6 +154,15 @@ CREATE TABLE IF NOT EXISTS edition(
     CHECK (EXTRACT(YEAR FROM date_debut) = annee)
 );
 
+-- 13. Informations sur la base elle-même. Clé « environnement » : production, preview, development ou test.
+-- Posée automatiquement à « production » par le site de production ; les tests refusent de tourner sur une base production.
+CREATE TABLE IF NOT EXISTS meta_base(
+    cle TEXT PRIMARY KEY,
+    valeur TEXT NOT NULL,
+    modifie_le TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+    CHECK (cle <> 'environnement' OR valeur IN ('production', 'preview', 'development', 'test'))
+);
+
 -- Mise à niveau des bases créées avec une version antérieure du schéma
 ALTER TABLE equipes ADD COLUMN IF NOT EXISTS nb_joueurs_max INT NOT NULL DEFAULT 10;
 ALTER TABLE rejoindre_equipe ADD COLUMN IF NOT EXISTS ordre INT NOT NULL DEFAULT 0;
@@ -163,6 +172,9 @@ ALTER TABLE photos ADD COLUMN IF NOT EXISTS chemin_stockage TEXT;
 ALTER TABLE albums ADD COLUMN IF NOT EXISTS date_debut DATE;
 ALTER TABLE albums ADD COLUMN IF NOT EXISTS date_fin DATE;
 ALTER TABLE edition ADD COLUMN IF NOT EXISTS contact_email TEXT;
+-- Nom de famille facultatif : on n'invente plus de nom technique pour les joueurs saisis avec un seul mot
+ALTER TABLE participants ALTER COLUMN nom DROP NOT NULL;
+UPDATE participants SET nom = NULL WHERE nom ~ '^ISEN-' OR nom IN (SELECT code FROM promos);
 
 
 CREATE TABLE IF NOT EXISTS limites_requetes(
@@ -238,17 +250,18 @@ ALTER TABLE photos            ENABLE ROW LEVEL SECURITY;
 ALTER TABLE limites_requetes  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions_revoquees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE edition           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE meta_base         ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
         REVOKE ALL ON promos, sports, equipes, participants, rejoindre_equipe, participer_sport,
-            matchups, albums, photos, limites_requetes, sessions_revoquees, edition,
+            matchups, albums, photos, limites_requetes, sessions_revoquees, edition, meta_base,
             v_classement_sport, v_classement_general FROM anon;
     END IF;
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
         REVOKE ALL ON promos, sports, equipes, participants, rejoindre_equipe, participer_sport,
-            matchups, albums, photos, limites_requetes, sessions_revoquees, edition,
+            matchups, albums, photos, limites_requetes, sessions_revoquees, edition, meta_base,
             v_classement_sport, v_classement_general FROM authenticated;
     END IF;
 END $$;
