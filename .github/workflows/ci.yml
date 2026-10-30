@@ -114,3 +114,99 @@ jobs:
           name: server-log-postgres-${{ matrix.postgres }}
           path: server.log
           retention-days: 7
+
+  migrate-production:
+    name: Migration production
+    needs: integration
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    # Une seule migration à la fois, et jamais interrompue en cours de route
+    concurrency:
+      group: migration-production
+      cancel-in-progress: false
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Installation des dépendances
+        run: npm ci --omit=dev
+
+      - name: Configuration
+        run: |
+          if [ -z "$DATABASE_URL" ]; then
+            echo "::error::Secret DATABASE_URL absent de l'environnement GitHub « production »"
+            exit 1
+          fi
+
+      # Refuse une base marquée « development » ; marque la base « production » au premier passage
+      - name: Migration du schéma
+        run: node scripts/migrate.js --production
+
+      - name: Vérification de la production (lecture seule)
+        env:
+          CHECK_ENV: production
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_STORAGE_BUCKET: ${{ vars.SUPABASE_STORAGE_BUCKET }}
+          APP_URL: ${{ vars.APP_URL }}
+        run: npm run check:connections
+
+  pr-develop:
+    name: Pull request vers develop
+    needs: integration
+    # Branches de travail uniquement (ni main, ni develop, ni les mises à jour Dependabot qui ont leur propre PR)
+    if: >-
+      github.event_name == 'push'
+      && github.ref_name != 'main'
+      && github.ref_name != 'develop'
+      && !startsWith(github.ref_name, 'dependabot/')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      BRANCH: ${{ github.ref_name }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ouverture de la pull request
+        run: |
+          existing=$(gh pr list --head "$BRANCH" --base develop --state open --json url --jq '.[0].url')
+          if [ -n "$existing" ]; then
+            echo "Pull request déjà ouverte : $existing (mise à jour automatiquement par ce push)"
+            exit 0
+          fi
+
+          ahead=$(git rev-list --count "origin/develop..HEAD")
+          if [ "$ahead" -eq 0 ]; then
+            echo "Rien à fusionner : $BRANCH ne contient aucun commit absent de develop."
+            exit 0
+          fi
+
+          body=$(printf '%s\n' \
+            "Pull request ouverte automatiquement : tous les tests de \`$BRANCH\` sont passés (contrôles statiques et intégration PostgreSQL 15 et 17)." \
+            "" \
+            "Commits à fusionner dans \`develop\` ($ahead) :" \
+            "" \
+            "$(git log --format='- %s' "origin/develop..HEAD")")
+
+          if ! gh pr create --base develop --head "$BRANCH" --title "Merge $BRANCH into develop" --body "$body"; then
+            echo "::error::Création refusée. Vérifiez Settings → Actions → General → « Allow GitHub Actions to create and approve pull requests »."
+            exit 1
+          fi
