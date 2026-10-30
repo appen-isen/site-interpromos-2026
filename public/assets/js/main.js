@@ -52,6 +52,19 @@ function decorateStandings(rows) {
   }));
 }
 
+// Temps restant avant le coup d'envoi
+function countdown(now) {
+  const kickoff = EDITION.startsAt ? new Date(EDITION.startsAt).getTime() : now;
+  const diff = Math.max(0, kickoff - now);
+  const pad = n => String(n).padStart(2, '0');
+  return {
+    d: Math.floor(diff / 864e5),
+    h: pad(Math.floor(diff / 36e5) % 24),
+    m: pad(Math.floor(diff / 6e4) % 60),
+    s: pad(Math.floor(diff / 1e3) % 60)
+  };
+}
+
 function getDerived() {
   const s = state;
   // Avant le tournoi tant qu'aucun match n'a démarré (compte à rebours + infos pratiques)
@@ -109,14 +122,7 @@ function getDerived() {
 
   const photosF = s.photos.filter(p => s.album === 'Tout' || p.album === s.album);
 
-  const kickoff = EDITION.startsAt ? new Date(EDITION.startsAt).getTime() : s.now;
-  const diff = Math.max(0, kickoff - s.now);
-  const pad = n => String(n).padStart(2, '0');
-  const cd = {
-    d: Math.floor(diff / 864e5),
-    h: pad(Math.floor(diff / 36e5) % 24),
-    m: pad(Math.floor(diff / 6e4) % 60)
-  };
+  const cd = countdown(s.now);
 
   return {
     s,
@@ -233,12 +239,12 @@ fetchInitialState().then(async () => {
     } catch (e) {}
   }, 8000);
 
-  // Mise à jour du compte à rebours (seule la page d'accueil en dépend : on évite de relancer les animations ailleurs)
+  // Compte à rebours : seul son texte change chaque seconde, la page n'est pas redessinée
   setInterval(() => {
     state.now = Date.now();
-    if (state.page !== 'home') return;
-    // Ne pas interrompre une vidéo en cours de lecture
-    if ([...document.querySelectorAll('video:not([data-hero])')].some(v => !v.paused)) return;
-    render();
-  }, 60000);
+    const el = document.getElementById('countdown');
+    if (!el) return;
+    const cd = countdown(state.now);
+    el.textContent = `${cd.d}J ${cd.h}H ${cd.m}M ${cd.s}S`;
+  }, 1000);
 });

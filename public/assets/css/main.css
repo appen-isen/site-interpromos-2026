@@ -573,10 +573,21 @@ button.is-loading::before {
   transition: width .6s cubic-bezier(.2,.8,.2,1);
 }
 
-@media (max-width: 1024px) {
+/* Compte à rebours */
+.countdown-value {
+  font-size: clamp(28px, calc(3.4vw - 15px), 44px) !important;
+}
+
+@media (max-width: 1200px) {
   .countdown-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
+  .countdown-value {
+    font-size: clamp(28px, calc(6.8vw - 16px), 44px) !important;
+  }
+}
+
+@media (max-width: 1024px) {
   .home-split-grid > div:first-child {
     border-right: 0 !important;
     border-bottom: 1px solid var(--line);
@@ -587,6 +598,9 @@ button.is-loading::before {
   .live-cards-grid,
   .countdown-grid {
     grid-template-columns: 1fr !important;
+  }
+  .countdown-value {
+    font-size: clamp(24px, calc(10vw - 4px), 44px) !important;
   }
 }
 

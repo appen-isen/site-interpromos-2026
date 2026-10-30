@@ -75,7 +75,7 @@ export function renderHome(d) {
       <div class="countdown-grid" style="display:grid;grid-template-columns:repeat(${DAYS.length + 1},minmax(0,1fr));border-bottom:1px solid var(--line)">
         <div style="padding:28px 48px;border-right:1px solid var(--line)">
           <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Coup d'envoi dans</div>
-          <div style="font:italic 800 44px/1 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums">${cd.d}J ${cd.h}H ${cd.m}M</div>
+          <div id="countdown" class="countdown-value" role="timer" aria-live="off" style="font:italic 800 44px/1 'Barlow Condensed',sans-serif;font-variant-numeric:tabular-nums;white-space:nowrap">${cd.d}J ${cd.h}H ${cd.m}M ${cd.s}S</div>
         </div>
         ${DAYS.map((day, i) => {
           const last = i === DAYS.length - 1;
