@@ -22,10 +22,7 @@ const EXTENSIONS = {
 };
 
 /**
- * Détermine le type réel du fichier à partir de ses premiers octets (signature).
- * On ne fait jamais confiance au Content-Type envoyé par le navigateur : cela empêche
- * d'héberger un fichier HTML/SVG déguisé en image.
- * Retourne null si le format n'est pas pris en charge.
+ * Détermine le type réel du fichier à partir de ses premiers octets en en anylast la sgnaturee 
  */
 export function sniffMime(buf) {
     if (!Buffer.isBuffer(buf) || buf.length < 12) return null;
@@ -41,7 +38,7 @@ export function sniffMime(buf) {
     if (buf.toString('ascii', 4, 8) === 'ftyp') {
         const brand = buf.toString('ascii', 8, 12);
         if (brand.startsWith('qt')) return 'video/quicktime';
-        // HEIC / AVIF (photos iPhone) : non lisibles par tous les navigateurs
+        // HEIC / AVIF (photos iPhone) : non lisibles par tous les navigateurs (a revoir @sony-level   )
         if (/^(heic|heix|hevc|mif1|msf1|avif)/.test(brand)) return null;
         return 'video/mp4';
     }
@@ -95,8 +92,7 @@ export async function createSignedUpload(mime) {
 }
 
 /**
- * Supabase uniquement : lit les premiers octets d'un objet envoyé pour vérifier son vrai forma
- * Retourne { mime, url, storagePath } ou null si l'objet est absent ou d'un format refusé.
+ * lié a supabase pour analyser le type de fichier envoye
  */
 export async function inspectUploadedObject(objectPath) {
     const sb = getSupabaseConfig();
@@ -107,7 +103,7 @@ export async function inspectUploadedObject(objectPath) {
     });
     if (!res.ok || !res.body) return null;
 
-    // On ne lit que le début du fichier, même si le serveur ignore l'en-tête Range
+    // On ne lit que le début du fichier, même si le serveur ignore l'en-tête Range (ok)
     const reader = res.body.getReader();
     const chunks = [];
     let size = 0;
