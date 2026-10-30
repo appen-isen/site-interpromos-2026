@@ -1,0 +1,1503 @@
+openapi: 3.1.0
+info:
+  title: API Interpromos
+  version: 1.0.0
+  description: |
+    API du tournoi inter-promotions de l'ISEN Nantes (BDS × club APPEN) : matchs et scores en direct,
+    classements, équipes, inscriptions, galerie et médias.
+
+    **Authentification (Espace BDS)** : les comptes sont gérés par Supabase Auth. `POST /api/auth/login`
+    renvoie un jeton d'accès Supabase (JWT, 1 h par défaut) à envoyer dans `Authorization: Bearer <jeton>`,
+    et un jeton de renouvellement pour `POST /api/auth/refresh`. Seuls les comptes dont
+    `app_metadata.role` vaut `bds` ont accès aux routes d'administration (`npm run admin:grant`).
+
+    **Identifiants** : UUID, sauf les matchs, adressés par leur code lisible (`code_match`, ex. `1-0-2`).
+    Un UUID invalide renvoie `404`.
+
+    **Limites** : corps de requête 4 Mo maximum (4,5 Mo sur Vercel) ; les médias passent par un envoi direct
+    vers Supabase Storage (`/api/media/upload-url` puis `/api/media/complete`).
+
+    **Erreurs** : toujours au format `{ "error": "message" }`, ou `{ "errors": { "champ": "message" } }`
+    pour les erreurs de validation de formulaire.
+servers:
+  - url: /
+    description: Même domaine que le site
+
+tags:
+  - name: Santé
+  - name: Authentification
+  - name: Tournoi
+    description: État global, référentiels et classements
+  - name: Matchs
+  - name: Équipes
+  - name: Inscriptions
+  - name: Galerie
+    description: Galerie publique et albums (événements datés)
+  - name: Médias
+    description: Téléversement et gestion des photos et vidéos (admin)
+  - name: Import
+
+security: []
+
+paths:
+  /api/ping:
+    get:
+      tags: [Santé]
+      summary: Vérifier que l'API répond
+      operationId: ping
+      responses:
+        '200':
+          description: L'API répond
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, const: pong }
+
+  /api/docs/openapi.yaml:
+    get:
+      tags: [Santé]
+      summary: Cette documentation (réservée au BDS)
+      description: |
+        Spécification OpenAPI, servie uniquement aux membres du BDS connectés.
+        La page `/docs/` la charge avec le jeton de session ; les essais de requêtes y sont désactivés.
+      operationId: getOpenApi
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Spécification au format YAML
+          content:
+            text/yaml:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ---------------------------------------------------------------------------
+  # Authentification
+  # ---------------------------------------------------------------------------
+  /api/auth/login:
+    post:
+      tags: [Authentification]
+      summary: Se connecter à l'Espace BDS
+      description: Connexion transmise à Supabase Auth. Limité à 10 tentatives par adresse IP sur 15 minutes.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Compte valide mais sans accès à l'Espace BDS (`app_metadata.role` différent de `bds`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '502': { $ref: '#/components/responses/AuthUnavailable' }
+        '503':
+          description: Supabase Auth n'est pas configuré sur le serveur
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/auth/refresh:
+    post:
+      tags: [Authentification]
+      summary: Renouveler le jeton d'accès
+      description: À appeler avant l'expiration du jeton (`expiresAt`). Le jeton de renouvellement n'est utilisable qu'une fois.
+      operationId: refreshSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: Nouvelle session
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '502': { $ref: '#/components/responses/AuthUnavailable' }
+
+  /api/auth/recover:
+    post:
+      tags: [Authentification]
+      summary: Mot de passe oublié
+      description: |
+        Supabase envoie un lien de réinitialisation qui ramène sur le site avec `#access_token=…&type=recovery`.
+        La réponse est identique que le compte existe ou non. Limité comme la connexion.
+      operationId: recoverPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Demande prise en compte
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sent: { type: boolean, const: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/auth/password:
+    post:
+      tags: [Authentification]
+      summary: Choisir un nouveau mot de passe
+      description: 'Avec le jeton reçu dans le lien de réinitialisation, envoyé en en-tête Authorization: Bearer.'
+      operationId: setPassword
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, minLength: 10 }
+      responses:
+        '200':
+          description: Mot de passe modifié
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated: { type: boolean, const: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/auth/me:
+    get:
+      tags: [Authentification]
+      summary: Vérifier la session courante
+      operationId: me
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Session valide
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated: { type: boolean, const: true }
+                  role: { type: string, const: bds }
+                  email: { type: string, format: email }
+        '401':
+          description: Session absente, expirée ou révoquée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated: { type: boolean, const: false }
+
+  /api/auth/logout:
+    post:
+      tags: [Authentification]
+      summary: Se déconnecter
+      description: Ferme la session chez Supabase et bloque le jeton d'accès jusqu'à son expiration.
+      operationId: logout
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Déconnecté
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated: { type: boolean, const: false }
+
+  # ---------------------------------------------------------------------------
+  # Tournoi
+  # ---------------------------------------------------------------------------
+  /api/state:
+    get:
+      tags: [Tournoi]
+      summary: État complet du tournoi en une requête
+      description: |
+        Configuration, matchs, classements, équipes, inscriptions et galerie publique.
+        Sans jeton BDS : pas d'e-mails et uniquement les inscriptions validées.
+      operationId: getState
+      security: [{}, { bearerAuth: [] }]
+      responses:
+        '200':
+          description: État du tournoi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  config: { $ref: '#/components/schemas/Config' }
+                  matches:
+                    type: array
+                    items: { $ref: '#/components/schemas/Match' }
+                  standings: { $ref: '#/components/schemas/Standings' }
+                  teams:
+                    type: array
+                    items: { $ref: '#/components/schemas/Team' }
+                  regs:
+                    type: array
+                    items: { $ref: '#/components/schemas/Registration' }
+                  albums:
+                    type: array
+                    items: { $ref: '#/components/schemas/Album' }
+                  pub: { $ref: '#/components/schemas/AlbumVisibility' }
+                  photos:
+                    type: array
+                    items: { $ref: '#/components/schemas/Media' }
+                  slots: { $ref: '#/components/schemas/MediaSlots' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/edition:
+    get:
+      tags: [Tournoi]
+      summary: Édition en cours (année, dates, lieu)
+      operationId: getEdition
+      responses:
+        '200':
+          description: Édition
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Edition' }
+    put:
+      tags: [Tournoi]
+      summary: Modifier l'édition (année, premier jour, heure, lieu)
+      description: |
+        Le tournoi dure 3 jours à partir de `start`, qui doit tomber pendant l'année `year`.
+        Les matchs existants restent rattachés à leur jour (0, 1, 2).
+      operationId: updateEdition
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [year, start]
+              properties:
+                year: { type: integer, minimum: 2000, maximum: 2100, examples: [2027] }
+                start: { type: string, format: date, examples: ['2027-11-02'] }
+                time: { type: string, pattern: '^([01]\d|2[0-3]):[0-5]\d$', default: '13:00' }
+                venue: { type: string, maxLength: 80, default: ISEN Nantes }
+                contact: { type: [string, 'null'], format: email, description: Adresse de contact affichée sur le site (vide = rien) }
+      responses:
+        '200':
+          description: Édition mise à jour
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Edition' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/sports:
+    get:
+      tags: [Tournoi]
+      summary: Liste des sports
+      operationId: listSports
+      responses:
+        '200':
+          description: Sports, triés par indice
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Sport' }
+
+  /api/promos:
+    get:
+      tags: [Tournoi]
+      summary: Liste des promotions
+      operationId: listPromos
+      responses:
+        '200':
+          description: Promotions, triées par code
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Promo' }
+
+  /api/standings:
+    get:
+      tags: [Tournoi]
+      summary: Classements général et par sport
+      description: |
+        Calculés par les vues SQL `v_classement_sport` et `v_classement_general` à partir des matchs terminés :
+        victoire 3 pts, nul 1 pt, défaite 0 pt, multipliés par le coefficient du sport.
+        Départage : points, puis victoires, puis code de promo. Mis en cache 3 s par le CDN (sans jeton).
+      operationId: getStandings
+      responses:
+        '200':
+          description: Classements
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Standings' }
+
+  # ---------------------------------------------------------------------------
+  # Matchs
+  # ---------------------------------------------------------------------------
+  /api/matches:
+    get:
+      tags: [Matchs]
+      summary: Liste des matchs
+      description: Mis en cache 3 s par le CDN (sans jeton), pour le rafraîchissement live des visiteurs.
+      operationId: listMatches
+      parameters:
+        - { name: day, in: query, schema: { type: integer, enum: [0, 1, 2] }, description: Jour du tournoi (0 = J1) }
+        - { name: sport, in: query, schema: { type: string }, description: Nom du sport }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/MatchStatus' } }
+      responses:
+        '200':
+          description: Matchs triés par jour, heure et sport
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Match' }
+    post:
+      tags: [Matchs]
+      summary: Programmer un match
+      operationId: createMatch
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MatchInput' }
+      responses:
+        '201':
+          description: Match créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  match: { $ref: '#/components/schemas/Match' }
+                  matches: { type: array, items: { $ref: '#/components/schemas/Match' } }
+                  standings: { $ref: '#/components/schemas/Standings' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/matches/generate:
+    post:
+      tags: [Matchs]
+      summary: Générer automatiquement le planning
+      operationId: generateMatches
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clearExisting: { type: boolean, default: false, description: Supprimer d'abord les matchs existants }
+      responses:
+        '200':
+          description: Planning généré
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  createdCount: { type: integer }
+                  matches: { type: array, items: { $ref: '#/components/schemas/Match' } }
+                  standings: { $ref: '#/components/schemas/Standings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/matches/{id}:
+    parameters:
+      - $ref: '#/components/parameters/MatchId'
+    put:
+      tags: [Matchs]
+      summary: Modifier un match
+      operationId: updateMatch
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MatchInput' }
+      responses:
+        '200':
+          description: Match modifié
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  match: { $ref: '#/components/schemas/Match' }
+                  matches: { type: array, items: { $ref: '#/components/schemas/Match' } }
+                  standings: { $ref: '#/components/schemas/Standings' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Matchs]
+      summary: Supprimer un match
+      operationId: deleteMatch
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Match supprimé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches: { type: array, items: { $ref: '#/components/schemas/Match' } }
+                  standings: { $ref: '#/components/schemas/Standings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/matches/{id}/score:
+    parameters:
+      - $ref: '#/components/parameters/MatchId'
+    patch:
+      tags: [Matchs]
+      summary: Mettre à jour le score (live)
+      description: Soit un incrément (`teamIndex` + `delta`), soit les deux scores (`scoreA`, `scoreB`).
+      operationId: updateMatchScore
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [teamIndex, delta]
+                  properties:
+                    teamIndex: { type: integer, enum: [0, 1], description: 0 = équipe A, 1 = équipe B }
+                    delta: { type: integer, examples: [1, -1] }
+                - type: object
+                  required: [scoreA, scoreB]
+                  properties:
+                    scoreA: { type: integer, minimum: 0 }
+                    scoreB: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Score mis à jour
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchWithStandings' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/matches/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/MatchId'
+    patch:
+      tags: [Matchs]
+      summary: Démarrer, terminer ou réinitialiser un match
+      operationId: updateMatchStatus
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/MatchStatus' }
+                resetScores: { type: boolean, default: false, description: Remettre le score à 0 – 0 }
+      responses:
+        '200':
+          description: Statut mis à jour
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchWithStandings' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------------------
+  # Équipes
+  # ---------------------------------------------------------------------------
+  /api/teams:
+    get:
+      tags: [Équipes]
+      summary: Liste des équipes
+      description: Équipes officielles et inscriptions validées. Sans jeton BDS, le champ `email` est retiré.
+      operationId: listTeams
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - { name: promo, in: query, schema: { type: string, examples: [A1] } }
+        - { name: sport, in: query, schema: { type: string, examples: [Football] } }
+      responses:
+        '200':
+          description: Équipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Team' }
+    post:
+      tags: [Équipes]
+      summary: Créer une équipe
+      operationId: createTeam
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TeamInput' }
+      responses:
+        '201': { $ref: '#/components/responses/TeamResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/teams/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    put:
+      tags: [Équipes]
+      summary: Modifier une équipe
+      operationId: updateTeam
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TeamInput' }
+      responses:
+        '200': { $ref: '#/components/responses/TeamResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Équipes]
+      summary: Supprimer une équipe
+      operationId: deleteTeam
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Équipe supprimée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  teams: { type: array, items: { $ref: '#/components/schemas/Team' } }
+                  matches: { type: array, items: { $ref: '#/components/schemas/Match' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/teams/{id}/max-players:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    patch:
+      tags: [Équipes]
+      summary: Modifier la capacité maximale de l'équipe
+      operationId: updateTeamMaxPlayers
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                maxPlayers: { type: integer, minimum: 1, description: Nouvelle capacité }
+                delta: { type: integer, examples: [1, -1], description: Ou variation relative }
+      responses:
+        '200': { $ref: '#/components/responses/TeamResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/teams/{id}/players:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    post:
+      tags: [Équipes]
+      summary: Ajouter un joueur
+      operationId: addTeamPlayer
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fullName]
+              properties:
+                fullName: { type: string, examples: [Prénom Nom] }
+                autoIncreaseMax: { type: boolean, default: false, description: Augmenter la capacité si l'équipe est pleine }
+      responses:
+        '201': { $ref: '#/components/responses/TeamResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/teams/{id}/players/{participantId}:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+      - name: participantId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [Équipes]
+      summary: Retirer un joueur
+      operationId: removeTeamPlayer
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/TeamResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/teams/{id}/players/move:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    post:
+      tags: [Équipes]
+      summary: Réordonner, transférer ou nommer capitaine
+      description: Une seule action par appel, selon le champ fourni (`direction`, `targetTeamId` ou `makeCaptain`).
+      operationId: moveTeamPlayer
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [participantId]
+              properties:
+                participantId: { type: string, format: uuid }
+                direction: { type: string, enum: [up, down], description: Monter ou descendre dans la liste }
+                targetTeamId: { type: string, format: uuid, description: Transférer vers cette équipe }
+                makeCaptain: { type: boolean, description: Placer le joueur en tête (capitaine) }
+      responses:
+        '200': { $ref: '#/components/responses/TeamResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------------------
+  # Inscriptions
+  # ---------------------------------------------------------------------------
+  /api/registrations:
+    get:
+      tags: [Inscriptions]
+      summary: Liste des inscriptions (admin)
+      operationId: listRegistrations
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Inscriptions et compteurs par statut
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  regs: { type: array, items: { $ref: '#/components/schemas/Registration' } }
+                  counts:
+                    type: object
+                    properties:
+                      pending: { type: integer }
+                      ok: { type: integer }
+                      no: { type: integer }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+    post:
+      tags: [Inscriptions]
+      summary: Inscrire une équipe (public)
+      description: |
+        Contrôles : prénom + nom pour chaque joueur, pas de doublon, nombre de joueurs selon le sport, nom d'équipe
+        unique par promo et par sport, joueur non déjà inscrit dans une autre équipe du même sport.
+        Limité à 20 envois par adresse IP sur 10 minutes.
+      operationId: createRegistration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sportIndex, promo, team, captain, email, players, rules]
+              properties:
+                sportIndex: { type: integer, minimum: 0 }
+                sport: { type: string, description: Nom du sport (secours si sportIndex est absent) }
+                promo: { type: string, examples: [A3] }
+                team: { type: string, maxLength: 60 }
+                captain: { type: string, maxLength: 80 }
+                email: { type: string, format: email, maxLength: 120 }
+                players:
+                  type: array
+                  items: { type: string, examples: [Prénom Nom] }
+                rules: { type: boolean, const: true, description: Acceptation du règlement }
+      responses:
+        '201':
+          description: Dossier enregistré (en attente de validation BDS)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reg: { $ref: '#/components/schemas/Registration' }
+        '400': { $ref: '#/components/responses/ValidationError' }
+        '409': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/registrations/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    patch:
+      tags: [Inscriptions]
+      summary: Valider ou refuser une inscription
+      operationId: updateRegistrationStatus
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/RegistrationStatus' }
+      responses:
+        '200':
+          description: Statut mis à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reg: { $ref: '#/components/schemas/Registration' }
+                  regs: { type: array, items: { $ref: '#/components/schemas/Registration' } }
+                  teams: { type: array, items: { $ref: '#/components/schemas/Team' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Inscriptions]
+      summary: Supprimer une inscription
+      description: Supprime aussi les joueurs rattachés à aucune autre équipe. Refusé si l'équipe a déjà des matchs.
+      operationId: deleteRegistration
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Inscription supprimée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  regs: { type: array, items: { $ref: '#/components/schemas/Registration' } }
+                  teams: { type: array, items: { $ref: '#/components/schemas/Team' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ---------------------------------------------------------------------------
+  # Galerie & albums
+  # ---------------------------------------------------------------------------
+  /api/gallery:
+    get:
+      tags: [Galerie]
+      summary: Galerie publique
+      description: Médias des albums publiés, sans le média affiché en tête de l'accueil (slot `hero`).
+      operationId: getGallery
+      parameters:
+        - { name: album, in: query, schema: { type: string }, description: Nom de l'album (`Tout` = tous) }
+      responses:
+        '200':
+          description: Galerie
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Gallery' }
+
+  /api/gallery/albums:
+    post:
+      tags: [Galerie]
+      summary: Créer un album / événement
+      operationId: createAlbum
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlbumInput' }
+      responses:
+        '201':
+          description: Album créé
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminGallery'
+                  - type: object
+                    properties:
+                      albumId: { type: string, format: uuid }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    patch:
+      tags: [Galerie]
+      summary: Publier / masquer un album (par son nom)
+      operationId: toggleAlbumVisibility
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                published: { type: boolean, description: Absent = inverser l'état actuel }
+      responses:
+        '200':
+          description: Visibilité mise à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string }
+                  published: { type: boolean }
+                  pub: { $ref: '#/components/schemas/AlbumVisibility' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/gallery/albums/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    put:
+      tags: [Galerie]
+      summary: Modifier un album
+      operationId: updateAlbum
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlbumInput' }
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Galerie]
+      summary: Supprimer un album vide
+      operationId: deleteAlbum
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ---------------------------------------------------------------------------
+  # Médias
+  # ---------------------------------------------------------------------------
+  /api/media:
+    get:
+      tags: [Médias]
+      summary: Tous les médias (admin), y compris albums en brouillon
+      operationId: listMedia
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/media/upload-url:
+    post:
+      tags: [Médias]
+      summary: '1/2 — Préparer un envoi direct vers Supabase Storage'
+      description: |
+        Mode `direct` (Supabase configuré). Le navigateur envoie ensuite le fichier brut avec
+        `PUT <uploadUrl>` (en-têtes `Content-Type` et `x-upsert: false`), puis appelle `/api/media/complete`.
+      operationId: createMediaUploadUrl
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, size]
+              properties:
+                type: { $ref: '#/components/schemas/MediaMime' }
+                size: { type: integer, description: Taille en octets }
+      responses:
+        '200':
+          description: URL signée (valable 2 h, un seul envoi)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  objectPath: { type: string, examples: [galerie/2026-10-30-a1b2c3d4e5f6a7b8.mp4] }
+                  uploadUrl: { type: string, format: uri }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMedia' }
+        '502': { $ref: '#/components/responses/StorageError' }
+
+  /api/media/complete:
+    post:
+      tags: [Médias]
+      summary: '2/2 — Enregistrer un média envoyé directement'
+      description: Vérifie le vrai format du fichier (signature binaire) puis l'ajoute à l'album. Un fichier refusé est supprimé du stockage.
+      operationId: completeMediaUpload
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [objectPath]
+              properties:
+                objectPath: { type: string }
+                fileName: { type: string }
+                album: { type: string, description: Nom de l'album (sinon le premier album) }
+                caption: { type: string, maxLength: 200 }
+      responses:
+        '201': { $ref: '#/components/responses/MediaCreated' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '415': { $ref: '#/components/responses/UnsupportedMedia' }
+
+  /api/media/upload:
+    post:
+      tags: [Médias]
+      summary: Envoyer un média via l'API (mode local)
+      description: |
+        Mode `api` (sans Supabase, développement). Corps = fichier brut. Limité à 4,5 Mo sur Vercel :
+        en production, utiliser `/api/media/upload-url`.
+      operationId: uploadMedia
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: X-File-Name, in: header, schema: { type: string }, description: Nom du fichier (encodeURIComponent) }
+        - { name: X-Album, in: header, schema: { type: string }, description: Album (encodeURIComponent) }
+        - { name: X-Caption, in: header, schema: { type: string }, description: Légende (encodeURIComponent) }
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema: { type: string, format: binary }
+          video/*:
+            schema: { type: string, format: binary }
+      responses:
+        '201': { $ref: '#/components/responses/MediaCreated' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMedia' }
+        '502': { $ref: '#/components/responses/StorageError' }
+
+  /api/media/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    patch:
+      tags: [Médias]
+      summary: Modifier un média
+      operationId: updateMedia
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                caption: { type: string, maxLength: 200 }
+                album: { type: string, description: Déplacer vers cet album (nom) }
+                big: { type: boolean, description: Grand format (2×2) dans la galerie }
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Médias]
+      summary: Supprimer un média et son fichier
+      operationId: deleteMedia
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/media/slots/{slot}:
+    parameters:
+      - name: slot
+        in: path
+        required: true
+        schema: { type: string, enum: [hero] }
+        description: '`hero` = média affiché en tête de la page d''accueil'
+    put:
+      tags: [Médias]
+      summary: Placer un média sur l'accueil (ou l'en retirer)
+      operationId: setMediaSlot
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mediaId:
+                  type: [string, 'null']
+                  format: uuid
+                  description: '`null` pour retirer le média actuel'
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------------------
+  # Import
+  # ---------------------------------------------------------------------------
+  /api/import/csv:
+    post:
+      tags: [Import]
+      summary: Importer les équipes d'une promo depuis un CSV
+      description: |
+        Deux formats : « fiche d'équipe » (une colonne par sport, en-têtes du type `Volleyball 1 (6)`)
+        ou lignes `Sport;Équipe;Capitaine;Joueurs`. Séparateur `;`.
+      operationId: importCsv
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [csvContent, promo]
+              properties:
+                csvContent: { type: string, description: Contenu du fichier CSV }
+                promo: { type: string, examples: [A1] }
+      responses:
+        '200':
+          description: Import réussi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  imported: { type: integer }
+                  importedTeams: { type: array, items: { type: object } }
+                  teams: { type: array, items: { $ref: '#/components/schemas/Team' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Jeton d'accès Supabase obtenu via `POST /api/auth/login` (renouvelable via `/api/auth/refresh`).
+
+  parameters:
+    Uuid:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    MatchId:
+      name: id
+      in: path
+      required: true
+      description: Code lisible du match (`code_match`, ex. `1-0-2`) ou son UUID
+      schema: { type: string }
+
+  responses:
+    BadRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Champs invalides ou déjà utilisés (doublon)
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/FieldErrors'
+              - $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Jeton absent, invalide, expiré ou révoqué
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Élément introuvable (ou identifiant invalide)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Opération impossible dans l'état actuel (doublon, élément encore utilisé)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooLarge:
+      description: Fichier ou corps de requête trop volumineux
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    UnsupportedMedia:
+      description: Format non pris en charge (JPG, PNG, WEBP, GIF, MP4, WEBM, MOV)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    StorageError:
+      description: Erreur du stockage des médias (Supabase Storage)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    AuthUnavailable:
+      description: Supabase Auth injoignable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooManyRequests:
+      description: Trop de tentatives depuis cette adresse IP
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Erreur interne
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TeamResult:
+      description: Équipe concernée et liste complète à jour
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              team: { $ref: '#/components/schemas/Team' }
+              teams: { type: array, items: { $ref: '#/components/schemas/Team' } }
+    AdminGalleryResult:
+      description: Galerie complète à jour (vue admin)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AdminGallery' }
+    MediaCreated:
+      description: Média ajouté
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/AdminGallery'
+              - type: object
+                properties:
+                  mediaId: { type: string, format: uuid }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    FieldErrors:
+      type: object
+      required: [errors]
+      properties:
+        errors:
+          type: object
+          additionalProperties: { type: string }
+          examples:
+            - team: 'Donnez un nom à votre équipe.'
+              players: 'Joueur saisi deux fois : Prénom Nom.'
+
+    Session:
+      type: object
+      properties:
+        authenticated: { type: boolean, const: true }
+        role: { type: string, const: bds }
+        token: { type: string, description: 'Jeton d''accès (JWT) à envoyer en `Authorization: Bearer`' }
+        refreshToken: { type: [string, 'null'], description: Pour /api/auth/refresh (null en mode test) }
+        expiresAt: { type: integer, description: Expiration du jeton (millisecondes depuis 1970) }
+        email: { type: string, format: email }
+
+    Promo:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, examples: [A1] }
+        mascot: { type: string, examples: [Les Bits] }
+
+    Sport:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        indice: { type: integer, description: Position du sport (0 = Football) }
+        name: { type: string }
+        short: { type: string }
+        venue: { type: string }
+        minPlayers: { type: integer }
+        maxPlayers: { type: integer }
+        poids: { type: integer, description: Coefficient appliqué aux points }
+
+    Config:
+      type: object
+      properties:
+        sports: { type: array, items: { type: string } }
+        short: { type: array, items: { type: string } }
+        venue: { type: array, items: { type: string } }
+        size: { type: array, items: { type: integer }, description: Joueurs minimum par sport }
+        promos: { type: array, items: { type: string } }
+        mascot: { type: object, additionalProperties: { type: string } }
+        days: { $ref: '#/components/schemas/EditionDays' }
+        albums: { type: array, items: { type: string } }
+        edition: { $ref: '#/components/schemas/Edition' }
+
+    EditionDays:
+      type: array
+      description: '[date, phase, code court] pour chaque jour, ex. ["Mar. 3 nov.", "Qualifs J1", "J1"]'
+      items: { type: array, items: { type: string }, minItems: 3, maxItems: 3 }
+
+    Edition:
+      type: object
+      properties:
+        year: { type: integer, examples: [2026] }
+        shortYear: { type: string, examples: ['26'] }
+        start: { type: string, format: date, description: Premier jour }
+        end: { type: string, format: date, description: Dernier jour }
+        time: { type: string, examples: ['13:00'], description: Heure du coup d'envoi (heure de Paris) }
+        venue: { type: string, examples: [ISEN Nantes] }
+        contact: { type: [string, 'null'], format: email, description: Adresse de contact affichée sur le site }
+        startsAt: { type: string, format: date-time, description: Coup d'envoi avec fuseau (compte à rebours) }
+        range: { type: string, examples: ['3 – 5 novembre'] }
+        days: { $ref: '#/components/schemas/EditionDays' }
+
+    MatchStatus:
+      type: string
+      enum: [up, live, done]
+      description: '`up` = à venir, `live` = en direct, `done` = terminé (compté au classement)'
+
+    MatchInput:
+      type: object
+      properties:
+        d: { type: integer, enum: [0, 1, 2], description: Jour }
+        t: { type: string, pattern: '^\d{2}:\d{2}$', examples: ['14:30'] }
+        si: { type: integer, description: Indice du sport }
+        a: { type: string, description: Code promo A, examples: [A1] }
+        b: { type: string, description: Code promo B, examples: [A2] }
+        venue: { type: string }
+        phase: { type: string, enum: [Qualification, Petite finale, Finale] }
+        status: { $ref: '#/components/schemas/MatchStatus' }
+        scoreA: { type: integer, minimum: 0 }
+        scoreB: { type: integer, minimum: 0 }
+
+    Match:
+      type: object
+      properties:
+        id: { type: string, description: Code lisible du match (`code_match`) }
+        dbId: { type: string, format: uuid }
+        d: { type: integer }
+        si: { type: integer }
+        sport: { type: string }
+        t: { type: string }
+        a: { type: string }
+        b: { type: string }
+        teamAName: { type: string }
+        teamBName: { type: string }
+        venue: { type: string }
+        phase: { type: string }
+        status: { $ref: '#/components/schemas/MatchStatus' }
+        scores: { type: array, items: { type: integer }, minItems: 2, maxItems: 2 }
+        gagnant: { type: [string, 'null'], format: uuid }
+
+    MatchWithStandings:
+      type: object
+      properties:
+        match: { $ref: '#/components/schemas/Match' }
+        standings: { $ref: '#/components/schemas/Standings' }
+
+    StandingRow:
+      type: object
+      properties:
+        p: { type: string, description: Code promo }
+        mascot: { type: string }
+        v: { type: integer, description: Victoires }
+        n: { type: integer, description: Nuls }
+        l: { type: integer, description: Défaites }
+        pts: { type: integer }
+        pos: { type: integer }
+        rec: { type: string, examples: ['2 · 1 · 0'] }
+        w: { type: string, description: Largeur de barre (% du leader) }
+
+    Standings:
+      type: object
+      properties:
+        general:
+          type: array
+          items:
+            allOf:
+              - $ref: '#/components/schemas/StandingRow'
+              - type: object
+                properties:
+                  per: { type: array, items: { type: integer }, description: Points par sport (ordre des indices) }
+        bySport:
+          type: array
+          items:
+            type: object
+            properties:
+              sport: { type: string }
+              si: { type: integer }
+              coef: { type: integer }
+              standings: { type: array, items: { $ref: '#/components/schemas/StandingRow' } }
+
+    PlayerDetail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        ordre: { type: integer }
+
+    Team:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        p: { type: string, description: Code promo }
+        si: { type: integer }
+        sport: { type: string }
+        minPlayers: { type: integer }
+        maxPlayers: { type: integer }
+        name: { type: string }
+        captain: { type: string }
+        email: { type: string, description: Uniquement avec un jeton BDS }
+        players: { type: integer }
+        playersList: { type: array, items: { type: string } }
+        playersDetails: { type: array, items: { $ref: '#/components/schemas/PlayerDetail' } }
+        points: { type: integer }
+        status: { $ref: '#/components/schemas/RegistrationStatus' }
+        isRegistration: { type: boolean, description: Équipe issue d'une inscription en ligne }
+        rec: { type: string, examples: ['2V 0N 1D'] }
+
+    TeamInput:
+      type: object
+      properties:
+        promo: { type: string, examples: [A1] }
+        si: { type: integer }
+        name: { type: string }
+        captain: { type: string }
+        email: { type: string, format: email }
+        maxPlayers: { type: integer }
+        playersList: { type: array, items: { type: string } }
+
+    RegistrationStatus:
+      type: string
+      enum: [En attente, Validée, Refusée]
+
+    Registration:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        team: { type: string }
+        promo: { type: string }
+        sport: { type: string }
+        captain: { type: string }
+        email: { type: string, description: Uniquement avec un jeton BDS (et pour le dossier qu'on vient d'envoyer) }
+        players: { type: integer }
+        date: { type: string, examples: [30 oct.] }
+        status: { $ref: '#/components/schemas/RegistrationStatus' }
+        playersList: { type: array, items: { type: string } }
+
+    Album:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        published: { type: boolean }
+        start: { type: [string, 'null'], format: date, description: Date de l'événement (classement passé / en cours / à venir) }
+        end: { type: [string, 'null'], format: date }
+        count: { type: integer }
+
+    AlbumInput:
+      type: object
+      properties:
+        name: { type: string, maxLength: 80 }
+        start: { type: [string, 'null'], format: date }
+        end: { type: [string, 'null'], format: date, description: Postérieure ou égale à start }
+        published: { type: boolean, default: true }
+
+    AlbumVisibility:
+      type: object
+      description: Visibilité de chaque album, par nom
+      additionalProperties: { type: boolean }
+
+    MediaMime:
+      type: string
+      enum: [image/jpeg, image/png, image/webp, image/gif, video/mp4, video/webm, video/quicktime]
+
+    Media:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        i: { type: integer, description: Ordre }
+        album: { type: string }
+        albumPublished: { type: boolean }
+        caption: { type: string }
+        url: { type: string }
+        big: { type: boolean }
+        type: { type: string, enum: [image, video] }
+        slot: { type: [string, 'null'], enum: [hero, null] }
+
+    MediaSlots:
+      type: object
+      properties:
+        hero: { $ref: '#/components/schemas/Media' }
+
+    Gallery:
+      type: object
+      properties:
+        albums: { type: array, items: { $ref: '#/components/schemas/Album' } }
+        pub: { $ref: '#/components/schemas/AlbumVisibility' }
+        photos: { type: array, items: { $ref: '#/components/schemas/Media' } }
+        slots: { $ref: '#/components/schemas/MediaSlots' }
+
+    AdminGallery:
+      allOf:
+        - $ref: '#/components/schemas/Gallery'
+        - type: object
+          properties:
+            upload:
+              type: object
+              properties:
+                mode: { type: string, enum: [direct, api], description: '`direct` = envoi vers Supabase Storage' }
+                maxBytes: { type: integer }
