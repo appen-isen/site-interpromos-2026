@@ -1,5 +1,5 @@
-export let SPORTS = ['Football', 'Basket', 'Volley', 'Handball', 'Badminton', 'Ultimate'];
-export let SHORT = ['Foot', 'Basket', 'Volley', 'Hand', 'Bad', 'Ultimate'];
+export let SPORTS = ['Football', 'Basket', 'Volley', 'Handball', 'Badminton', 'Lutte'];
+export let SHORT = ['Foot', 'Basket', 'Volley', 'Hand', 'Bad', 'Lutte'];
 export let VENUE = ['Terrain synthétique', 'Gymnase A', 'Gymnase B', 'Gymnase A', 'Gymnase B', 'Terrain synthétique'];
 export let SIZE = [7, 5, 6, 7, 2, 7];
 export let PROMOS = ['A1', 'A2', 'A3', 'A4', 'A5'];
