@@ -14,7 +14,7 @@ function applyAdminGallery(data) {
 }
 
 // Envoi direct vers Supabase Storage via l'URL signée, avec suivi de progression
-function putToSignedUrl(url, file, onPercent) {
+export function putToSignedUrl(url, file, onPercent) {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', url);

@@ -148,6 +148,7 @@ CREATE TABLE IF NOT EXISTS edition(
     heure_debut VARCHAR(5) NOT NULL DEFAULT '13:00',
     lieu TEXT NOT NULL DEFAULT 'ISEN Nantes',
     contact_email TEXT,                        -- adresse de contact affichée sur le site (facultative)
+    instagram TEXT,                            
     modifie_le TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
 
     PRIMARY KEY (id),
@@ -172,6 +173,7 @@ ALTER TABLE photos ADD COLUMN IF NOT EXISTS chemin_stockage TEXT;
 ALTER TABLE albums ADD COLUMN IF NOT EXISTS date_debut DATE;
 ALTER TABLE albums ADD COLUMN IF NOT EXISTS date_fin DATE;
 ALTER TABLE edition ADD COLUMN IF NOT EXISTS contact_email TEXT;
+ALTER TABLE edition ADD COLUMN IF NOT EXISTS instagram TEXT;
 -- Nom de famille facultatif 
 ALTER TABLE participants ALTER COLUMN nom DROP NOT NULL;
 UPDATE participants SET nom = NULL WHERE nom ~ '^ISEN-' OR nom IN (SELECT code FROM promos);
@@ -185,6 +187,23 @@ CREATE TABLE IF NOT EXISTS limites_requetes(
     horodatage TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_limites_requetes_cle ON limites_requetes(cle, horodatage);
+
+-- 14. Posts et reels Instagram du BDS affichés sur le site (ajoutés à la main dans l'Espace BDS)
+CREATE TABLE IF NOT EXISTS publications_instagram(
+    id UUID NOT NULL DEFAULT gen_random_uuid(),
+    code TEXT NOT NULL UNIQUE,                 -- identifiant dans l'URL : instagram.com/p/<code>/
+    type TEXT NOT NULL DEFAULT 'post' CHECK (type IN ('post', 'reel')),
+    video_url TEXT,                            -- vidéo jointe par le BDS : lue en boucle sur le site à la place du lecteur Instagram
+    chemin_video TEXT,                         -- emplacement du fichier (local:… ou supabase:…), pour le supprimer
+    cree_le TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
+
+    PRIMARY KEY (id)
+);
+ALTER TABLE publications_instagram ADD COLUMN IF NOT EXISTS video_url TEXT;
+ALTER TABLE publications_instagram ADD COLUMN IF NOT EXISTS chemin_video TEXT;
+-- Vidéo de ce post affichée en tête de l'accueil (une seule à la fois, à la place du média « hero » de la galerie)
+ALTER TABLE publications_instagram ADD COLUMN IF NOT EXISTS en_accueil BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_publications_instagram_accueil ON publications_instagram(en_accueil) WHERE en_accueil;
 
 -- 11. Sessions BDS révoquées par une déconnexion (empreinte SHA-256 du jeton, jamais le jeton lui-même)
 CREATE TABLE IF NOT EXISTS sessions_revoquees(
@@ -254,17 +273,18 @@ ALTER TABLE limites_requetes  ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions_revoquees ENABLE ROW LEVEL SECURITY;
 ALTER TABLE edition           ENABLE ROW LEVEL SECURITY;
 ALTER TABLE meta_base         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE publications_instagram ENABLE ROW LEVEL SECURITY;
 
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
         REVOKE ALL ON promos, sports, equipes, participants, rejoindre_equipe, participer_sport,
-            matchups, albums, photos, limites_requetes, sessions_revoquees, edition, meta_base,
+            matchups, albums, photos, limites_requetes, sessions_revoquees, edition, meta_base, publications_instagram,
             v_classement_sport, v_classement_general FROM anon;
     END IF;
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
         REVOKE ALL ON promos, sports, equipes, participants, rejoindre_equipe, participer_sport,
-            matchups, albums, photos, limites_requetes, sessions_revoquees, edition, meta_base,
+            matchups, albums, photos, limites_requetes, sessions_revoquees, edition, meta_base, publications_instagram,
             v_classement_sport, v_classement_general FROM authenticated;
     END IF;
 END $$;

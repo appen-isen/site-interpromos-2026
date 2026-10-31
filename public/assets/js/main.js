@@ -25,6 +25,7 @@ const L = 'var(--line)';
 // les liens partagés et le bouton Retour du navigateur
 function go(page, extra = {}) {
   Object.assign(state, { page }, extra);
+  state.sideOpen = false;
   const url = page === entryPage() ? window.location.pathname + window.location.search : `#${page}`;
   if (pageFromLocation() !== page) history.pushState(null, '', url);
   window.scrollTo(0, 0);
@@ -161,6 +162,11 @@ function render() {
   // La vidéo d'accueil est conservée d'un affichage à l'autre (sinon elle repartirait de zéro à chaque score)
   const heroVideo = root.querySelector('video[data-hero]');
   const heroButton = root.querySelector('[data-action="hero-sound"]');
+  // Idem pour les vidéos Instagram en boucle (avec leur bouton son)
+  const igCards = new Map([...root.querySelectorAll('.ig-card-video')].map(c => {
+    const v = c.querySelector('video');
+    return [v?.getAttribute('src'), { card: c, playing: v && !v.paused }];
+  }));
 
   if (s.page === 'admin') {
     if (!s.isAdminAuthenticated) {
@@ -183,6 +189,13 @@ function render() {
     const newButton = root.querySelector('[data-action="hero-sound"]');
     if (heroButton && newButton) newButton.replaceWith(heroButton);
   }
+  root.querySelectorAll('.ig-card-video').forEach(card => {
+    const old = igCards.get(card.querySelector('video')?.getAttribute('src'));
+    if (!old) return;
+    card.replaceWith(old.card);
+    if (old.playing) old.card.querySelector('video').play().catch(() => {});
+  });
+  watchInstagramVideos(root);
 
   attachEventListeners(render, go);
 }
@@ -198,6 +211,39 @@ function renderPage(d) {
     case 'galerie': return renderGallery(d);
     default: return renderHome(d);
   }
+}
+
+// Posts Instagram : le lecteur d'Instagram annonce sa hauteur par message ; on ajuste le cadre pour éviter
+// les barres de défilement et les blancs (la hauteur par défaut du CSS sert tant que rien n'est reçu)
+window.addEventListener('message', event => {
+  if (event.origin !== 'https://www.instagram.com') return;
+  let data = event.data;
+  try {
+    if (typeof data === 'string') data = JSON.parse(data);
+  } catch (e) {
+    return;
+  }
+  const height = Number(data?.details?.height);
+  if (data?.type !== 'MEASURE' || !(height > 100)) return;
+  const frame = [...document.querySelectorAll('iframe[data-ig]')].find(f => f.contentWindow === event.source);
+  if (frame) frame.style.height = `${Math.ceil(height)}px`;
+});
+
+// Vidéos Instagram jointes : lecture en boucle seulement quand elles sont visibles (batterie, données mobiles)
+const igObserver = 'IntersectionObserver' in window
+  ? new IntersectionObserver(entries => entries.forEach(({ target, isIntersecting }) => {
+    if (isIntersecting) target.play().catch(() => {});
+    else target.pause();
+  }), { threshold: 0.35 })
+  : null;
+
+function watchInstagramVideos(root) {
+  root.querySelectorAll('video[data-ig-video]').forEach(video => {
+    if (video.dataset.watched) return;
+    video.dataset.watched = '1';
+    if (igObserver) igObserver.observe(video);
+    else video.play().catch(() => {});
+  });
 }
 
 // Initialisation
@@ -234,8 +280,10 @@ fetchInitialState().then(async () => {
       const onLiveView = LIVE_PAGES.includes(state.page) || (state.page === 'admin' && state.adminTab === 'live');
       // Pas de réaffichage pendant une saisie ou la lecture d'une vidéo
       const typing = document.activeElement?.matches?.('input, textarea, select');
-      const playing = [...document.querySelectorAll('video:not([data-hero])')].some(v => !v.paused);
-      if (onLiveView && !typing && !playing) render();
+      const playing = [...document.querySelectorAll('video:not([data-hero]):not([data-ig-video])')].some(v => !v.paused);
+      // Un post Instagram dans lequel on a cliqué (reel en lecture…) serait rechargé par le réaffichage
+      const inEmbed = document.activeElement?.tagName === 'IFRAME';
+      if (onLiveView && !typing && !playing && !inEmbed) render();
     } catch (e) {}
   }, 8000);
 

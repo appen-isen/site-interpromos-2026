@@ -36,6 +36,8 @@ tags:
   - name: Médias
     description: Téléversement et gestion des photos et vidéos (admin)
   - name: Import
+  - name: Instagram
+    description: Posts et reels Instagram du BDS affichés sur le site
 
 security: []
 
@@ -310,6 +312,7 @@ paths:
                 time: { type: string, pattern: '^([01]\d|2[0-3]):[0-5]\d$', default: '13:00' }
                 venue: { type: string, maxLength: 80, default: ISEN Nantes }
                 contact: { type: [string, 'null'], format: email, description: Adresse de contact affichée sur le site (vide = rien) }
+                instagram: { type: [string, 'null'], description: 'Compte Instagram du BDS : « nom », « @nom » ou lien du profil (vide = rien)', examples: ['@bds_isen_nantes'] }
       responses:
         '200':
           description: Édition mise à jour
@@ -318,6 +321,151 @@ paths:
               schema: { $ref: '#/components/schemas/Edition' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/instagram:
+    get:
+      tags: [Instagram]
+      summary: Posts et reels affichés sur le site (du plus récent au plus ancien ajouté, 24 au plus)
+      operationId: getInstagramPosts
+      responses:
+        '200':
+          description: Liste des posts
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/InstagramPost' } }
+    post:
+      tags: [Instagram]
+      summary: Ajouter un post ou un reel à partir de son lien
+      operationId: addInstagramPost
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url]
+              properties:
+                url: { type: string, examples: ['https://www.instagram.com/reel/DAbcdEFGhij/'] }
+      responses:
+        '201':
+          description: Post ajouté ; renvoie la liste à jour
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/InstagramPost' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /api/instagram/{id}:
+    delete:
+      tags: [Instagram]
+      summary: Retirer un post du site (il reste publié sur Instagram)
+      operationId: deleteInstagramPost
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Post retiré ; renvoie la liste à jour
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/InstagramPost' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/instagram/{id}/video:
+    post:
+      tags: [Instagram]
+      summary: Joindre la vidéo d'un post (stockage local ; corps = fichier MP4, WEBM ou MOV brut)
+      description: |
+        La vidéo est lue en boucle, sans le son, à la place du lecteur Instagram (qui interdit la lecture automatique).
+        Avec Supabase Storage : demander une URL signée à `/api/media/upload-url`, y envoyer le fichier, puis appeler `/api/instagram/{id}/video/complete`.
+      operationId: uploadInstagramVideo
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          video/*: { schema: { type: string, format: binary } }
+      responses:
+        '200':
+          description: Vidéo jointe ; renvoie la liste à jour
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/InstagramPost' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '415': { description: Le fichier n'est pas une vidéo MP4, WEBM ou MOV }
+    delete:
+      tags: [Instagram]
+      summary: Retirer la vidéo jointe (le site revient au lecteur Instagram)
+      operationId: deleteInstagramVideo
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: Vidéo retirée ; renvoie la liste à jour
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/InstagramPost' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/instagram/{id}/video/complete:
+    post:
+      tags: [Instagram]
+      summary: Rattacher au post une vidéo envoyée directement à Supabase Storage
+      operationId: completeInstagramVideo
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [objectPath]
+              properties:
+                objectPath: { type: string, description: Chemin renvoyé par /api/media/upload-url }
+      responses:
+        '200':
+          description: Vidéo jointe ; renvoie la liste à jour
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/InstagramPost' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '415': { description: Le fichier n'est pas une vidéo MP4, WEBM ou MOV }
+
+  /api/instagram/{id}/hero:
+    put:
+      tags: [Instagram]
+      summary: Mettre la vidéo jointe du post en tête de l'accueil (ou l'en retirer)
+      description: Une seule vidéo d'accueil à la fois ; le média « hero » choisi dans la galerie est retiré (et inversement).
+      operationId: setInstagramHero
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                on: { type: boolean, default: true }
+      responses:
+        '200':
+          description: Accueil mis à jour ; renvoie la liste à jour
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: '#/components/schemas/InstagramPost' } }
+        '400': { description: Le post n'a pas de vidéo jointe }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /api/sports:
     get:
@@ -1300,9 +1448,20 @@ components:
         time: { type: string, examples: ['13:00'], description: Heure du coup d'envoi (heure de Paris) }
         venue: { type: string, examples: [ISEN Nantes] }
         contact: { type: [string, 'null'], format: email, description: Adresse de contact affichée sur le site }
+        instagram: { type: [string, 'null'], description: Compte Instagram du BDS, sans @, examples: [bds_isen_nantes] }
         startsAt: { type: string, format: date-time, description: Coup d'envoi avec fuseau (compte à rebours) }
         range: { type: string, examples: ['3 – 5 novembre'] }
         days: { $ref: '#/components/schemas/EditionDays' }
+
+    InstagramPost:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, description: Identifiant du post dans son adresse, examples: [DAbcdEFGhij] }
+        type: { type: string, enum: [post, reel] }
+        url: { type: string, format: uri, examples: ['https://www.instagram.com/reel/DAbcdEFGhij/'] }
+        video: { type: [string, 'null'], description: Vidéo jointe par le BDS, lue en boucle sur le site }
+        hero: { type: boolean, description: Vidéo affichée en tête de l'accueil }
 
     MatchStatus:
       type: string

@@ -6,7 +6,8 @@ import {
     dbGetStandings,
     dbGetTeams,
     dbGetRegistrations,
-    dbGetGallery
+    dbGetGallery,
+    dbGetInstagramPosts
 } from '../data/store.js';
 import { isAdminRequest } from '../auth/session.js';
 
@@ -17,13 +18,14 @@ export function publicTeam({ email, ...team }) {
 
 export async function api_state(request, response) {
     try {
-        const [config, matches, standings, teams, regs, gallery] = await Promise.all([
+        const [config, matches, standings, teams, regs, gallery, instagram] = await Promise.all([
             dbGetConfig(),
             dbGetMatches(),
             dbGetStandings(),
             dbGetTeams(),
             dbGetRegistrations(),
-            dbGetGallery(undefined, { publicOnly: true })
+            dbGetGallery(undefined, { publicOnly: true }),
+            dbGetInstagramPosts()
         ]);
 
         const admin = await isAdminRequest(request);
@@ -38,7 +40,8 @@ export async function api_state(request, response) {
             albums: gallery.albums,
             pub: gallery.pub,
             photos: gallery.photos,
-            slots: gallery.slots
+            slots: gallery.slots,
+            instagram
         });
     } catch (err) {
         console.error('Erreur GET /api/state :', err);
