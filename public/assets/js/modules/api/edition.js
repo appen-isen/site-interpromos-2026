@@ -12,6 +12,7 @@ export function openEditionForm() {
     time: EDITION.time,
     venue: EDITION.venue,
     contact: EDITION.contact || '',
+    instagram: EDITION.instagram || '',
     error: '',
     success: '',
     loading: false
@@ -37,7 +38,7 @@ export async function saveEdition() {
     const res = await fetch('/api/edition', {
       method: 'PUT',
       headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ year: Number(f.year), start: f.start, time: f.time, venue: f.venue, contact: f.contact })
+      body: JSON.stringify({ year: Number(f.year), start: f.start, time: f.time, venue: f.venue, contact: f.contact, instagram: f.instagram })
     });
     if (res.status === 401) return handleUnauthorized();
     const data = await safeJson(res);

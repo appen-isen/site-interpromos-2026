@@ -37,3 +37,10 @@ export {
   openEditionForm,
   saveEdition
 } from './edition.js';
+export {
+  addInstagramPost,
+  deleteInstagramPost,
+  uploadInstagramVideo,
+  deleteInstagramVideo,
+  setInstagramHero
+} from './instagram.js';

@@ -262,9 +262,6 @@ input::placeholder {
   .admin-live-grid {
     grid-template-columns: 1fr !important;
   }
-  .admin-layout {
-    grid-template-columns: 1fr !important;
-  }
 }
 
 /* =============================================================================
@@ -714,4 +711,305 @@ button.is-loading::before {
   html.theme-transition * {
     transition: background-color .25s ease, color .25s ease, border-color .25s ease !important;
   }
+}
+
+/* Posts et reels Instagram (accueil et galerie) */
+.ig-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.ig-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.ig-card iframe {
+  display: block;
+  width: 100%;
+  height: 620px; /* remplacée par la hauteur annoncée par Instagram une fois le post chargé */
+  border: 0;
+  background: #fff;
+}
+
+@media (max-width: 1024px) {
+  .ig-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .ig-section {
+    padding: 40px 20px !important;
+  }
+  .ig-section h2 {
+    font-size: 44px !important;
+  }
+  .ig-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =============================================================================
+   Espace BDS — barre latérale
+   Ordinateur : 240 px, réductible aux icônes (64 px).
+   Téléphone : rail d'icônes (56 px) ; le bouton menu l'ouvre par-dessus la page.
+   ============================================================================= */
+
+.admin-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  min-height: 100vh;
+  transition: grid-template-columns .2s ease;
+}
+
+.admin-side {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  padding: 24px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 30;
+}
+
+.admin-side-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 16px 20px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+.side-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  white-space: nowrap;
+  padding: 11px 16px;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--muted);
+  font: 600 14px var(--font-body);
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.side-item.is-on {
+  border-left-color: var(--accent);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.side-icon {
+  position: relative;
+  flex: none;
+  width: 22px;
+  display: grid;
+  place-items: center;
+}
+
+.side-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.side-count {
+  min-width: 22px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+}
+
+/* Pastille sur l'icône : remplace le compteur quand le menu est réduit */
+.side-dot {
+  display: none;
+  position: absolute;
+  top: -3px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.admin-side-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+
+.side-theme {
+  padding: 6px 12px;
+}
+
+.admin-side-backdrop {
+  display: none;
+}
+
+/* Menu réduit aux icônes */
+.admin-layout.side-collapsed {
+  grid-template-columns: 64px minmax(0, 1fr);
+}
+
+.admin-layout.side-collapsed .side-item {
+  justify-content: center;
+  padding: 12px 0;
+}
+
+.admin-layout.side-collapsed .side-label,
+.admin-layout.side-collapsed .side-count {
+  display: none;
+}
+
+.admin-layout.side-collapsed .side-dot {
+  display: block;
+}
+
+.admin-layout.side-collapsed .admin-side-brand {
+  justify-content: center;
+  padding: 0 0 20px;
+}
+
+.admin-layout.side-collapsed .side-theme {
+  display: grid;
+  place-items: center;
+  padding: 6px 0;
+}
+
+@media (max-width: 720px) {
+  .admin-layout,
+  .admin-layout.side-collapsed {
+    grid-template-columns: 56px minmax(0, 1fr);
+  }
+
+  .admin-main {
+    padding: 24px 16px 48px !important;
+  }
+
+  /* Rail d'icônes */
+  .admin-layout:not(.side-open) .side-item {
+    justify-content: center;
+    padding: 12px 0;
+  }
+  .admin-layout:not(.side-open) .side-label,
+  .admin-layout:not(.side-open) .side-count {
+    display: none;
+  }
+  .admin-layout:not(.side-open) .side-dot {
+    display: block;
+  }
+  .admin-layout:not(.side-open) .admin-side-brand {
+    justify-content: center;
+    padding: 0 0 16px;
+  }
+  .admin-layout:not(.side-open) .side-theme {
+    display: grid;
+    place-items: center;
+    padding: 6px 0;
+  }
+  .admin-layout:not(.side-open) .theme-toggle {
+    width: 36px;
+    height: 36px;
+  }
+
+  /* Menu ouvert : par-dessus la page, sans la décaler */
+  .admin-layout.side-open .admin-side {
+    position: fixed;
+    left: 0;
+    width: min(260px, 85vw);
+    box-shadow: 8px 0 32px rgba(0, 0, 0, .35);
+    animation: side-in .18s ease-out;
+  }
+  .admin-layout.side-open .admin-side-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    border: 0;
+    padding: 0;
+    background: rgba(0, 0, 0, .45);
+    cursor: pointer;
+  }
+}
+
+@keyframes side-in {
+  from { transform: translateX(-24px); opacity: .6; }
+  to { transform: none; opacity: 1; }
+}
+
+/* Le menu ouvert sort de la grille sur téléphone : la page garde sa colonne */
+.admin-side { grid-column: 1; grid-row: 1; }
+.admin-main { grid-column: 2; grid-row: 1; }
+
+/* Vidéo Instagram jointe : format vertical des reels, lecture en boucle */
+.ig-card-video {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  max-height: 720px;
+  background: #000;
+}
+
+.ig-card-video video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ig-video-bar {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 28px 12px 12px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .6));
+}
+
+.ig-video-bar a,
+.ig-video-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  background: rgba(10, 9, 9, .6);
+  border: 1px solid rgba(255, 255, 255, .25);
+  color: #f3f2f2;
+  font: 600 12px var(--font-body);
+  text-decoration: none;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.ig-video-bar a:hover,
+.ig-video-bar button:hover,
+.ig-video-bar button[aria-pressed="true"] {
+  background: #f0243f;
+  border-color: #f0243f;
+}
+
+/* Lien vers le post quand la vidéo d'accueil vient d'Instagram (même style que le bouton son, à gauche) */
+.hero-sound.hero-ig-link {
+  right: auto;
+  left: 16px;
+  text-decoration: none;
 }

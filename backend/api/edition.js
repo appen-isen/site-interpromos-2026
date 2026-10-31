@@ -6,7 +6,8 @@ const EDITION_ERRORS = {
     YEAR_MISMATCH: "La date de début doit tomber pendant l'année de l'édition.",
     INVALID_TIME: 'Heure du coup d’envoi invalide (format HH:MM).',
     INVALID_VENUE: 'Indiquez le lieu du tournoi.',
-    INVALID_CONTACT: 'Adresse e-mail de contact invalide.'
+    INVALID_CONTACT: 'Adresse e-mail de contact invalide.',
+    INVALID_INSTAGRAM: 'Compte Instagram invalide (lettres, chiffres, points et _ ; 30 caractères au plus).'
 };
 
 /**

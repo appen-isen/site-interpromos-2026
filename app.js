@@ -60,6 +60,15 @@ import { UPLOADS_DIR, MAX_UPLOAD_BYTES } from './backend/data/media-storage.js';
 import { isUuid } from './backend/data/store.js';
 import { api_import_csv } from './backend/api/import.js';
 import { api_get_edition, api_put_edition } from './backend/api/edition.js';
+import {
+    api_get_instagram,
+    api_post_instagram,
+    api_delete_instagram,
+    api_upload_instagram_video,
+    api_complete_instagram_video,
+    api_delete_instagram_video,
+    api_put_instagram_hero
+} from './backend/api/instagram.js';
 import { api_get_openapi } from './backend/api/docs.js';
 const app = express();
 
@@ -118,6 +127,22 @@ app.get('/api/docs/openapi.yaml', requireAdminAuth, api_get_openapi);
 app.get('/api/state', api_state);
 app.get('/api/edition', api_get_edition);
 app.put('/api/edition', requireAdminAuth, api_put_edition);
+
+// Routes API — Posts Instagram affichés sur le site
+app.get('/api/instagram', api_get_instagram);
+app.post('/api/instagram', requireAdminAuth, api_post_instagram);
+app.delete('/api/instagram/:id', requireAdminAuth, requireUuidParams, api_delete_instagram);
+
+app.post(
+    '/api/instagram/:id/video',
+    requireAdminAuth,
+    requireUuidParams,
+    express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES }),
+    api_upload_instagram_video
+);
+app.post('/api/instagram/:id/video/complete', requireAdminAuth, requireUuidParams, api_complete_instagram_video);
+app.delete('/api/instagram/:id/video', requireAdminAuth, requireUuidParams, api_delete_instagram_video);
+app.put('/api/instagram/:id/hero', requireAdminAuth, requireUuidParams, api_put_instagram_hero);
 app.get('/api/sports', api_sports);
 app.get('/api/promos', api_promos);
 app.get('/api/standings', shortCdnCache, api_standings);
