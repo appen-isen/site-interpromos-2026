@@ -1,12 +1,4 @@
-// Donne (ou retire) l'accès à l'Espace BDS à un compte 
-// Le compte se crée dans Supabase : Authentication → Users → Add user (ou invitation par e-mail).
-//
-//   npm run admin:grant -- prenom.nom@isen-ouest.yncrea.fr
-//   npm run admin:grant -- prenom.nom@isen-ouest.yncrea.fr --revoke
-//   npm run admin:grant -- --list
-//
-// Le rôle est stocké dans app_metadata, que l'utilisateur ne peut pas modifier lui-même.
-// Il est pris en compte à la prochaine connexion (ou au prochain renouvellement du jeton).
+
 import { pool } from '../backend/data/db.js';
 
 const ROLE = 'bds';

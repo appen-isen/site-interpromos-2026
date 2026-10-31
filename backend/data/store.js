@@ -21,7 +21,7 @@ export const DEFAULT_SPORTS = [
     { indice: 2, nom: 'Volley', nom_court: 'Volley', lieu: 'Gymnase B', min: 6, max: 9, poids: 1 },
     { indice: 3, nom: 'Handball', nom_court: 'Hand', lieu: 'Gymnase A', min: 7, max: 10, poids: 1 },
     { indice: 4, nom: 'Badminton', nom_court: 'Bad', lieu: 'Gymnase B', min: 2, max: 4, poids: 1 },
-    { indice: 5, nom: 'Ultimate', nom_court: 'Ultimate', lieu: 'Terrain synthétique', min: 7, max: 10, poids: 1 }
+    { indice: 5, nom: 'Lutte', nom_court: 'Lutte', lieu: 'Terrain synthétique', min: 7, max: 10, poids: 1 }
 ];
 
 // Albums créés uniquement sur une base vierge (l'admin peut ensuite les modifier ou les supprimer)

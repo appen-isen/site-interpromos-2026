@@ -19,7 +19,9 @@
     "db:role": "node scripts/set-db-role.js",
     "db:role:prod": "node --env-file=.env.production scripts/set-db-role.js",
     "admin:grant": "node scripts/grant-admin.js",
-    "admin:grant:prod": "node --env-file=.env.production scripts/grant-admin.js"
+    "admin:grant:prod": "node --env-file=.env.production scripts/grant-admin.js",
+    "admin:list": "node scripts/grant-admin.js --list",
+    "admin:list:prod": "node --env-file=.env.production scripts/grant-admin.js --list"
   },
   "dependencies": {
     "express": "^5.3.0",
