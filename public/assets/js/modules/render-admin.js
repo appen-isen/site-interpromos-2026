@@ -98,6 +98,24 @@ export function renderLogin() {
   `;
 }
 
+// Icônes de la barre latérale de l'Espace BDS (seules visibles quand le menu est réduit)
+const svg = body => `<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+const ICONS = {
+  menu: svg('<path d="M4 6h16M4 12h16M4 18h16"/>'),
+  live: svg('<circle cx="12" cy="12" r="2"/><path d="M16.2 7.8a6 6 0 0 1 0 8.4M7.8 16.2a6 6 0 0 1 0-8.4M19 5a10 10 0 0 1 0 14M5 19A10 10 0 0 1 5 5"/>'),
+  matchs: svg('<rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>'),
+  equipes: svg('<circle cx="9" cy="8" r="4"/><path d="M2 21v-1a6 6 0 0 1 12 0v1M16 4a4 4 0 0 1 0 8M22 21v-1a6 6 0 0 0-4-5.6"/>'),
+  inscriptions: svg('<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3M9 12l2 2 4-4"/>'),
+  import: svg('<path d="M12 15V3M7 8l5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>'),
+  edition: svg('<path d="M4 21V4M4 4h12l-2 4 2 4H4"/>'),
+  galerie: svg('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/>'),
+  instagram: svg('<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/>'),
+  refresh: svg('<path d="M21 12a9 9 0 1 1-3-6.7L21 8M21 3v5h-5"/>'),
+  docs: svg('<path d="M4 19.5V5a2 2 0 0 1 2-2h14v16H6a2 2 0 0 0-2 2.5zM20 19v3H6"/>'),
+  site: svg('<path d="M19 12H5M12 19l-7-7 7-7"/>'),
+  logout: svg('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>')
+};
+
 export function renderAdmin(d) {
   const { s, liveList, ms, byTime } = d;
   const pending = s.regs.filter(r => r.status === 'En attente').length;
@@ -110,7 +128,8 @@ export function renderAdmin(d) {
     ['inscriptions', 'Inscriptions', pending],
     ['import', 'Import CSV', 0],
     ['edition', 'Édition', 0],
-    ['galerie', 'Galerie', s.adminPhotos.length]
+    ['galerie', 'Galerie', s.adminPhotos.length],
+    ['instagram', 'Instagram', s.instagramPosts.length]
   ];
 
   const regTone = {
@@ -122,46 +141,53 @@ export function renderAdmin(d) {
   const adminMatches = ms.filter(m => m.d === s.adminDay).sort(byTime);
 
   return `
-    <div class="admin-layout" style="display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100vh">
-      <aside style="background:var(--surface);border-right:1px solid var(--line);padding:24px 0;display:flex;flex-direction:column;gap:4px">
-        <div style="display:flex;align-items:center;gap:10px;padding:0 24px 24px;margin-bottom:8px;border-bottom:1px solid var(--line)">
-          <span style="width:32px;height:32px;background:var(--logo-bg);display:grid;place-items:center">
+    <div class="admin-layout ${s.sideOpen ? 'side-open' : ''} ${s.sideCollapsed ? 'side-collapsed' : ''}">
+      <button type="button" data-action="toggle-side" class="admin-side-backdrop" aria-label="Fermer le menu" tabindex="-1"></button>
+      <aside class="admin-side">
+        <div class="admin-side-brand">
+          <span style="width:32px;height:32px;flex:none;background:var(--logo-bg);display:grid;place-items:center">
             <img src="/assets/logo_bds.svg" alt="BDS" style="width:24px;height:24px">
           </span>
-          <div>
+          <div class="side-label">
             <div style="font:italic 800 20px/1 'Barlow Condensed',sans-serif;text-transform:uppercase">Admin BDS</div>
             <div style="font-size:11px;color:var(--success);margin-top:2px">● Connecté · Bureau BDS</div>
           </div>
         </div>
 
+        <button type="button" data-action="toggle-side" class="side-item side-toggle hover-surface" aria-expanded="${s.sideOpen || !s.sideCollapsed}" title="Afficher ou masquer le menu">
+          <span class="side-icon">${ICONS.menu}</span><span class="side-label">Réduire le menu</span>
+        </button>
+
         ${tabs.map(([t, label, count]) => {
           const on = s.adminTab === t;
+          const hot = on || t === 'live' || t === 'inscriptions';
           return `
-            <button data-action="admin-tab" data-tab="${t}" class="hover-surface" style="display:flex;align-items:center;justify-content:space-between;gap:8px;white-space:nowrap;padding:12px 20px;border:0;border-left:3px solid ${on ? R : 'transparent'};background:${on ? 'var(--surface-2)' : 'transparent'};color:${on ? T : M};font:600 14px var(--font-body);cursor:pointer;text-align:left">
-              <span>${esc(label)}</span>
-              ${count ? `<span style="min-width:22px;padding:2px 6px;background:${on || t === 'live' || t === 'inscriptions' ? 'var(--accent)' : 'var(--line)'};color:${on || t === 'live' || t === 'inscriptions' ? 'var(--on-accent)' : 'var(--text)'};font-size:11px;font-weight:700;text-align:center">${count}</span>` : ''}
+            <button data-action="admin-tab" data-tab="${t}" class="side-item hover-surface ${on ? 'is-on' : ''}" title="${esc(label)}" aria-label="${esc(label)}${count ? ` (${count})` : ''}" ${on ? 'aria-current="page"' : ''}>
+              <span class="side-icon">${ICONS[t] || ''}${count ? `<span class="side-dot" style="background:${hot ? 'var(--accent)' : 'var(--line-strong)'}"></span>` : ''}</span>
+              <span class="side-label">${esc(label)}</span>
+              ${count ? `<span class="side-count" style="background:${hot ? 'var(--accent)' : 'var(--line)'};color:${hot ? 'var(--on-accent)' : 'var(--text)'}">${count}</span>` : ''}
             </button>
           `;
         }).join('')}
 
-        <div style="margin-top:auto;display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--line);padding-top:12px">
-          <div style="padding:6px 24px">${renderThemeToggle()}</div>
-          <button data-action="refresh-state" class="hover-text-light" style="padding:10px 24px;border:0;background:none;color:var(--text-2);font:600 13px var(--font-body);cursor:pointer;text-align:left">
-            ↻ Actualiser les données
+        <div class="admin-side-foot">
+          <div class="side-theme">${renderThemeToggle()}</div>
+          <button data-action="refresh-state" class="side-item hover-text-light" title="Actualiser les données" style="color:var(--text-2)">
+            <span class="side-icon">${ICONS.refresh}</span><span class="side-label">Actualiser les données</span>
           </button>
-          <a href="/docs/" class="hover-text-light" style="padding:10px 24px;color:var(--text-2);font:600 13px var(--font-body);text-decoration:none">
-            ⌘ Documentation API
+          <a href="/docs/" class="side-item hover-text-light" title="Documentation API" style="color:var(--text-2)">
+            <span class="side-icon">${ICONS.docs}</span><span class="side-label">Documentation API</span>
           </a>
-          <button data-action="nav" data-page="home" class="hover-text-light" style="padding:10px 24px;border:0;background:none;color:var(--muted);font:600 13px var(--font-body);cursor:pointer;text-align:left">
-            ← Voir le site public
+          <button data-action="nav" data-page="home" class="side-item hover-text-light" title="Voir le site public">
+            <span class="side-icon">${ICONS.site}</span><span class="side-label">Voir le site public</span>
           </button>
-          <button data-action="admin-logout" class="hover-text-light" style="padding:10px 24px;border:0;background:none;color:var(--error);font:600 13px var(--font-body);cursor:pointer;text-align:left">
-            Se déconnecter
+          <button data-action="admin-logout" class="side-item hover-text-light" title="Se déconnecter" style="color:var(--error)">
+            <span class="side-icon">${ICONS.logout}</span><span class="side-label">Se déconnecter</span>
           </button>
         </div>
       </aside>
 
-      <main style="padding:40px 32px 64px;min-width:0;overflow-x:auto">
+      <main class="admin-main" style="padding:40px 32px 64px;min-width:0;overflow-x:auto">
         <!-- Bandeau récapitulatif des données en base (masqué sur le live pour garder l'écran de saisie épuré) -->
         ${s.adminTab === 'live' ? '' : `<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);background:var(--surface);margin-bottom:32px">
           <div data-action="admin-tab" data-tab="matchs" style="padding:16px 20px;border-right:1px solid var(--line);cursor:pointer">
@@ -189,6 +215,7 @@ export function renderAdmin(d) {
         ${s.adminTab === 'galerie' ? renderAdminGallery(s, ALBUMS) : ''}
         ${s.adminTab === 'import' ? renderAdminImport(s) : ''}
         ${s.adminTab === 'edition' ? renderAdminEdition(s) : ''}
+        ${s.adminTab === 'instagram' ? renderAdminInstagram(s) : ''}
       </main>
     </div>
   `;
@@ -910,7 +937,7 @@ function renderAdminGallery(s, ALBUMS) {
 }
 
 function renderAdminEdition(s) {
-  const f = s.editionForm || { year: String(EDITION.year), start: EDITION.start, time: EDITION.time, venue: EDITION.venue, contact: EDITION.contact || '' };
+  const f = s.editionForm || { year: String(EDITION.year), start: EDITION.start, time: EDITION.time, venue: EDITION.venue, contact: EDITION.contact || '', instagram: EDITION.instagram || '' };
   const input = `background:var(--bg);border:1px solid ${L};color:${T};padding:11px 12px;font:15px var(--font-body);color-scheme:var(--scheme)`;
   return `
     <h1 style="font:italic 900 56px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0">Édition du tournoi</h1>
@@ -942,6 +969,10 @@ function renderAdminEdition(s) {
         <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:${M}">
           E-mail de contact affiché sur le site (facultatif)
           <input data-field="editionForm-contact" type="email" maxlength="120" value="${esc(f.contact)}" placeholder="Laisser vide pour ne rien afficher" style="${input}">
+        </label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:${M}">
+          Compte Instagram du BDS (bouton « Suivre » et pied de page, facultatif)
+          <input data-field="editionForm-instagram" maxlength="80" value="${esc(f.instagram)}" placeholder="Ex : @bds_isen_nantes ou lien du profil" style="${input}">
         </label>
         <p style="font-size:12px;color:${M};margin:0">Changer l'année décale automatiquement la date du premier jour sur la même date de la nouvelle année.</p>
         ${f.error ? `<div role="alert" style="padding:10px 12px;border:1px solid ${R};background:var(--error-bg);color:var(--error-text);font-size:13px">${esc(f.error)}</div>` : ''}
@@ -1067,6 +1098,72 @@ Prénom Nom;Prénom Nom;Prénom Nom</pre>
             <pre style="background:var(--bg);border:1px solid var(--line);padding:12px;font:12px var(--font-mono);color:var(--muted);overflow-x:auto;margin:0">Sport;Nom de l'équipe;Prénom Nom du capitaine;Prénom Nom, Prénom Nom, ...</pre>
           </div>
         `}
+      </div>
+    </div>
+  `;
+}
+
+function renderAdminInstagram(s) {
+  const f = s.igForm;
+  const input = `background:var(--bg);border:1px solid ${L};color:${T};padding:11px 12px;font:15px var(--font-body)`;
+  return `
+    <h1 style="font:italic 900 56px/1 'Barlow Condensed',sans-serif;text-transform:uppercase;margin:0">Instagram</h1>
+    <p style="font-size:14px;color:${M};margin:8px 0 28px;max-width:720px">
+      Collez le lien d'un post ou d'un reel du BDS : il s'affiche aussitôt sur l'accueil (3 plus récents) et dans la galerie (12 plus récents).
+      Sur Instagram : « ⋯ » puis « Copier le lien ». Le compte doit être public.
+      Instagram n'autorise pas la lecture automatique de son lecteur : pour qu'un reel tourne en boucle, joignez-lui son fichier vidéo
+      (il est lu sans le son, le visiteur peut l'activer). Une vidéo jointe peut aussi passer en tête de l'accueil avec « Mettre en accueil ».
+    </p>
+
+    <div style="display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;align-items:start;max-width:1100px">
+      <div style="background:var(--surface);border:1px solid ${L};padding:24px;display:flex;flex-direction:column;gap:16px">
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:${M}">
+          Lien du post ou du reel
+          <input data-field="igForm-url" value="${esc(f.url)}" placeholder="https://www.instagram.com/reel/…" style="${input}">
+        </label>
+        ${f.error ? `<div role="alert" style="padding:10px 12px;border:1px solid ${R};background:var(--error-bg);color:var(--error-text);font-size:13px">${esc(f.error)}</div>` : ''}
+        ${f.success ? `<div style="padding:10px 12px;border:1px solid var(--success-line);background:var(--success-bg);color:var(--success-text);font-size:13px">${esc(f.success)}</div>` : ''}
+        <button data-action="add-ig-post" class="hover-accent ${f.loading ? 'is-loading' : ''}" ${f.loading ? 'disabled' : ''} style="align-self:flex-start;background:${f.loading ? 'var(--line-strong)' : R};color:var(--on-accent);border:0;padding:13px 20px;font:700 14px var(--font-body);cursor:pointer">
+          ${f.loading ? 'Ajout…' : 'Ajouter au site'}
+        </button>
+        <p style="font-size:12px;color:${M};margin:0">
+          Compte affiché : ${EDITION.instagram ? `<strong style="color:${T}">@${esc(EDITION.instagram)}</strong>` : 'aucun'}
+          · <button data-action="admin-tab" data-tab="edition" style="padding:0;background:none;border:0;color:${R};font:600 12px var(--font-body);cursor:pointer">modifier dans Édition</button>
+        </p>
+      </div>
+
+      <div style="background:var(--surface);border:1px solid ${L};padding:24px">
+        <div style="font-size:12px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:${R};margin-bottom:8px">Sur le site (${s.instagramPosts.length})</div>
+        ${s.instagramPosts.length === 0 ? `
+          <p style="font-size:14px;color:${M};margin:0">Aucun post pour le moment.</p>
+        ` : s.instagramPosts.map((p, i) => {
+          const up = f.uploading?.id === p.id;
+          const small = `background:none;border:1px solid ${L};padding:6px 10px;font:600 12px var(--font-body);cursor:pointer`;
+          return `
+          <div style="padding:12px 0;border-top:1px solid ${L};font-size:14px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <span style="min-width:44px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${p.type === 'reel' ? R : M}">${p.type === 'reel' ? 'Reel' : 'Post'}</span>
+              <a href="${esc(p.url)}" target="_blank" rel="noopener noreferrer" style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:${T}">${esc(p.code)}</a>
+              ${i < 3 ? `<span style="font-size:11px;color:${M}">accueil</span>` : ''}
+              <button data-action="delete-ig-post" data-id="${esc(p.id)}" class="hover-text-light" style="${small};color:var(--error)">Retirer</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:8px 0 0 56px;font-size:12px;color:${M}">
+              ${up ? `<span>Envoi de la vidéo… ${f.uploading.percent ? `${f.uploading.percent} %` : ''}</span>` : p.video ? `
+                <span style="color:var(--success-text)">▶ Vidéo en boucle</span>
+                ${p.hero
+                  ? `<span style="background:${R};color:var(--on-accent);font:600 11px var(--font-body);padding:3px 6px">ACCUEIL</span>
+                     <button data-action="ig-hero" data-id="${esc(p.id)}" data-on="false" class="hover-text-light" style="${small};color:${T}">Retirer de l'accueil</button>`
+                  : `<button data-action="ig-hero" data-id="${esc(p.id)}" data-on="true" class="hover-text-light" style="${small};color:${T}" title="Remplace la photo ou vidéo d'accueil choisie dans la Galerie">Mettre en accueil</button>`}
+                <label class="hover-text-light" style="${small};color:${T}">Remplacer<input data-field="igVideo" data-id="${esc(p.id)}" type="file" accept="video/mp4,video/webm,video/quicktime" hidden></label>
+                <button data-action="delete-ig-video" data-id="${esc(p.id)}" class="hover-text-light" style="${small};color:${M}">Retirer la vidéo</button>
+              ` : `
+                <span>Lecteur Instagram (pas de lecture auto)</span>
+                <label class="hover-text-light" style="${small};color:${T}">Joindre la vidéo<input data-field="igVideo" data-id="${esc(p.id)}" type="file" accept="video/mp4,video/webm,video/quicktime" hidden></label>
+              `}
+            </div>
+          </div>
+        `;
+        }).join('')}
       </div>
     </div>
   `;

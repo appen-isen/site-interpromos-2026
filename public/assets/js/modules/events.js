@@ -36,7 +36,12 @@ import {
   deleteAlbum,
   submitImportCSV,
   openEditionForm,
-  saveEdition
+  saveEdition,
+  addInstagramPost,
+  deleteInstagramPost,
+  uploadInstagramVideo,
+  deleteInstagramVideo,
+  setInstagramHero
 } from './api/index.js';
 
 const L = 'var(--line)';
@@ -168,10 +173,18 @@ export function attachEventListeners(render, go) {
       // Recharge les données publiques (sans e-mails) après la déconnexion
       await fetchInitialState();
       go('home');
+    } else if (action === 'toggle-side') {
+      // Téléphone : le menu s'ouvre par-dessus la page ; ordinateur : il se réduit aux icônes
+      if (window.matchMedia('(max-width: 720px)').matches) state.sideOpen = !state.sideOpen;
+      else state.sideCollapsed = !state.sideCollapsed;
+      render();
     } else if (action === 'admin-tab') {
       state.adminTab = btn.dataset.tab;
+      state.sideOpen = false;
       state.teamActionError = '';
       state.teamActionSuccess = '';
+      state.igForm.error = '';
+      state.igForm.success = '';
       render();
       if (state.adminTab === 'edition') {
         openEditionForm();
@@ -327,6 +340,31 @@ export function attachEventListeners(render, go) {
     } else if (action === 'cancel-album-edit') {
       resetAlbumForm();
       render();
+    } else if (action === 'add-ig-post') {
+      const p = addInstagramPost();
+      render();
+      await p;
+      render();
+    } else if (action === 'delete-ig-post') {
+      if (!confirm('Retirer ce post du site ? Il reste publié sur Instagram.')) return;
+      await deleteInstagramPost(btn.dataset.id);
+      render();
+    } else if (action === 'delete-ig-video') {
+      if (!confirm('Retirer la vidéo ? Le site affichera de nouveau le lecteur Instagram pour ce post.')) return;
+      await deleteInstagramVideo(btn.dataset.id);
+      render();
+    } else if (action === 'ig-hero') {
+      await setInstagramHero(btn.dataset.id, btn.dataset.on === 'true');
+      render();
+    } else if (action === 'ig-sound') {
+      // Son d'une vidéo Instagram jointe : sans réaffichage, pour ne pas relancer la vidéo
+      const video = btn.closest('.ig-card')?.querySelector('video');
+      if (!video) return;
+      video.muted = !video.muted;
+      if (!video.muted) video.play().catch(() => {});
+      btn.setAttribute('aria-pressed', String(!video.muted));
+      btn.textContent = video.muted ? '🔇 Son' : '🔊 Son';
+      return;
     } else if (action === 'delete-album') {
       if (!confirm(`Supprimer l'album « ${btn.dataset.name} » ?`)) return;
       await deleteAlbum(btn.dataset.id);
@@ -456,6 +494,14 @@ export function attachEventListeners(render, go) {
 
   root.addEventListener('change', async e => {
     const target = e.target;
+    if (target.dataset.field === 'igVideo') {
+      const file = target.files?.[0];
+      const p = uploadInstagramVideo(target.dataset.id, file, render);
+      render();
+      await p;
+      render();
+      return;
+    }
     if (target.dataset.field === 'mediaFiles') {
       const files = Array.from(target.files || []);
       target.value = '';
@@ -535,6 +581,10 @@ export function attachEventListeners(render, go) {
       state.editionForm[field.replace('editionForm-', '')] = target.value;
       state.editionForm.error = '';
       state.editionForm.success = '';
+    } else if (field === 'igForm-url') {
+      state.igForm.url = target.value;
+      state.igForm.error = '';
+      state.igForm.success = '';
     } else if (field && field.startsWith('albumForm-')) {
       const key = field.replace('albumForm-', '');
       state.albumForm[key] = target.type === 'checkbox' ? target.checked : target.value;

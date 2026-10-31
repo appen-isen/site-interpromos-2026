@@ -20,6 +20,7 @@ export let EDITION = {
   time: '13:00',
   venue: 'ISEN Nantes',
   contact: null,
+  instagram: null,
   startsAt: '',
   range: '',
   days: DAYS
@@ -161,6 +162,12 @@ export const state = {
   albums: [],
   albumForm: emptyAlbumForm(),
   editionForm: null,
+  // Barre latérale de l'Espace BDS : ouverte par-dessus la page sur téléphone, réduite aux icônes sur ordinateur
+  sideOpen: false,
+  sideCollapsed: false,
+  // Posts et reels Instagram affichés sur le site, et formulaire d'ajout de l'Espace BDS
+  instagramPosts: [],
+  igForm: { url: '', error: '', success: '', loading: false, uploading: null },
   slots: {},
   adminPhotos: [],
   adminSlots: {},
@@ -269,6 +276,7 @@ export function updateConfig(data) {
   if (Array.isArray(data.photos)) state.photos = data.photos;
   if (Array.isArray(data.albums)) setAlbums(data.albums);
   if (data.slots) state.slots = data.slots;
+  if (Array.isArray(data.instagram)) state.instagramPosts = data.instagram;
 
   syncTeamsAndRegistrations();
 
