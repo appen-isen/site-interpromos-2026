@@ -7,7 +7,7 @@ const SPORT_META = [
   { icon: '🏐', format: '6 vs 6', vibe: 'Smashs, blocs et cohésion millimétrée' },
   { icon: '🤾', format: '7 vs 7', vibe: 'Impact, vitesse et duels au 6 mètres' },
   { icon: '🏸', format: 'Duo 2 vs 2', vibe: 'Réflexes éclairs et volants décisifs' },
-  { icon: '🥏', format: '7 vs 7', vibe: 'Fair-play, cardio et longues passes en zone' }
+  { icon: '🤼', format: 'Duels 1 vs 1', vibe: 'Force, technique et combats au tapis' }
 ];
 
 const PROMO_SLOGANS = {

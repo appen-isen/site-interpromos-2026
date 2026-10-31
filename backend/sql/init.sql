@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS meta_base(
     CHECK (cle <> 'environnement' OR valeur IN ('production', 'preview', 'development', 'test'))
 );
 
--- Mise à niveau des bases créées avec une version antérieure du schéma
+
 ALTER TABLE equipes ADD COLUMN IF NOT EXISTS nb_joueurs_max INT NOT NULL DEFAULT 10;
 ALTER TABLE rejoindre_equipe ADD COLUMN IF NOT EXISTS ordre INT NOT NULL DEFAULT 0;
 ALTER TABLE photos ADD COLUMN IF NOT EXISTS type_media TEXT NOT NULL DEFAULT 'image';
@@ -172,9 +172,12 @@ ALTER TABLE photos ADD COLUMN IF NOT EXISTS chemin_stockage TEXT;
 ALTER TABLE albums ADD COLUMN IF NOT EXISTS date_debut DATE;
 ALTER TABLE albums ADD COLUMN IF NOT EXISTS date_fin DATE;
 ALTER TABLE edition ADD COLUMN IF NOT EXISTS contact_email TEXT;
--- Nom de famille facultatif : on n'invente plus de nom technique pour les joueurs saisis avec un seul mot
+-- Nom de famille facultatif 
 ALTER TABLE participants ALTER COLUMN nom DROP NOT NULL;
 UPDATE participants SET nom = NULL WHERE nom ~ '^ISEN-' OR nom IN (SELECT code FROM promos);
+
+UPDATE sports SET nom = 'Lutte', nom_court = 'Lutte'
+WHERE indice = 5 AND nom = 'Ultimate' AND NOT EXISTS (SELECT 1 FROM sports WHERE nom = 'Lutte');
 
 
 CREATE TABLE IF NOT EXISTS limites_requetes(
