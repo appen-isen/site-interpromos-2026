@@ -55,7 +55,7 @@ export function renderHome(d) {
           Une promo.<br><span style="color:var(--accent)">Un titre.</span>
         </h1>
         <p style="font-size:18px;line-height:1.6;color:var(--text-2);max-width:480px;margin:0">
-          ${SPORTS.length} sports, ${PROMOS.length} promos, ${DAYS.length} jours de compétition organisés par le BDS et le club APPEN.
+          ${SPORTS.length} sports, ${PROMOS.length} promos, ${DAYS.length} jours de compétition organisés par le BDS .
         </p>
         <div style="display:flex;gap:12px;flex-wrap:wrap">
           <button data-action="nav" data-page="inscription" class="hover-accent" style="background:var(--accent);color:var(--on-accent);border:0;padding:15px 22px;font:700 15px var(--font-body);cursor:pointer">
