@@ -1,0 +1,87 @@
+/* Survols, mise en page et adaptations à la taille de l'écran */
+
+/* Interactive hover helpers matching prototype */
+.hover-surface:hover {
+  background: var(--surface-2) !important;
+}
+
+.hover-surface-2:hover {
+  background: var(--surface-4) !important;
+}
+
+.hover-row-dark:hover {
+  background: var(--surface) !important;
+}
+
+.hover-accent:hover {
+  background: var(--accent-hover) !important;
+}
+
+.hover-accent-fill:hover {
+  background: var(--accent) !important;
+}
+
+.hover-border-white:hover {
+  border-color: var(--text) !important;
+}
+
+.hover-border-light:hover {
+  border-color: var(--text) !important;
+}
+
+.hover-border-mid:hover {
+  border-color: var(--line-strong) !important;
+}
+
+.hover-text-light:hover {
+  color: var(--text) !important;
+}
+
+.hover-admin-btn:hover {
+  color: var(--text) !important;
+  border-color: var(--line-strong) !important;
+}
+
+.hover-photo:hover {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.input-focus:focus {
+  border-color: var(--accent) !important;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1024px) {
+  .hero-grid,
+  .home-split-grid,
+  .results-split-grid,
+  .inscription-grid,
+  .inscription-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .teams-grid,
+  .live-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .sports-strip-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 720px) {
+  .main-nav {
+    padding: 14px 20px !important;
+    flex-wrap: wrap;
+    gap: 14px !important;
+  }
+  .teams-grid,
+  .live-cards-grid,
+  .sports-strip-grid,
+  .admin-live-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

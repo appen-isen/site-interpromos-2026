@@ -1,0 +1,162 @@
+/* Inscription, accueil, planning, compte à rebours, boutons son et thème, étiquette de promo */
+
+/* Inscription : carte de confirmation et bouton d'envoi */
+.anim-pop {
+  animation: pop-in .6s cubic-bezier(.2,.8,.2,1) both;
+}
+
+button.is-loading::before {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 10px;
+  vertical-align: -2px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: var(--on-accent);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-tile::before,
+  .gallery-tile.anim-in,
+  .anim-pop {
+    animation: none !important;
+  }
+  .gallery-tile img,
+  .gallery-tile video,
+  .gallery-tile .tile-caption,
+  .album-chip {
+    transition: none !important;
+    transform: none !important;
+  }
+  .gallery-tile img,
+  .gallery-tile video {
+    opacity: 1;
+  }
+}
+
+/* Accueil / planning / live admin (maquette Interpromos 2026) */
+.score-btn-minus:hover:not(:disabled) {
+  border-color: var(--line-strong) !important;
+}
+
+.score-btn-minus:disabled {
+  opacity: .35;
+  cursor: not-allowed !important;
+}
+
+.rank-bar {
+  transition: width .6s cubic-bezier(.2,.8,.2,1);
+}
+
+/* Compte à rebours */
+.countdown-value {
+  font-size: clamp(28px, calc(3.4vw - 15px), 44px) !important;
+}
+
+@media (max-width: 1200px) {
+  .countdown-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .countdown-value {
+    font-size: clamp(28px, calc(6.8vw - 16px), 44px) !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .home-split-grid > div:first-child {
+    border-right: 0 !important;
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+@media (max-width: 720px) {
+  .live-cards-grid,
+  .countdown-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .countdown-value {
+    font-size: clamp(24px, calc(10vw - 4px), 44px) !important;
+  }
+}
+
+/* Bouton son de la vidéo d'accueil */
+.hero-sound {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: rgba(10, 9, 9, .7);
+  border: 1px solid #4a4644;
+  color: #f3f2f2;
+  font: 600 12px var(--font-body);
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background-color .2s ease, border-color .2s ease;
+}
+
+.hero-sound:hover,
+.hero-sound[aria-pressed="true"] {
+  background: #f0243f;
+  border-color: #f0243f;
+}
+
+@media (max-width: 720px) {
+  .gallery-grid {
+    grid-auto-rows: 160px !important;
+    padding: 0 20px 48px !important;
+  }
+  .chip-group-label {
+    flex-basis: 100%;
+    margin: 8px 0 0 !important;
+  }
+}
+
+/* Bouton clair / sombre */
+.theme-toggle {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color .2s ease, background-color .2s ease, transform .3s ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--text);
+  transform: rotate(-15deg);
+}
+
+/* Changement de thème en douceur (sauf si l'appareil demande moins d'animations) */
+@media (prefers-reduced-motion: no-preference) {
+  html.theme-transition,
+  html.theme-transition * {
+    transition: background-color .25s ease, color .25s ease, border-color .25s ease !important;
+  }
+}
+
+/* Promo d'une équipe, à côté de son nom (matchs, classements) */
+.promo-tag {
+  display: inline-block;
+  vertical-align: middle;
+  margin-left: 4px;
+  padding: 1px 6px;
+  border: 1px solid currentColor;
+  font: 700 11px/1.4 var(--font-body);
+  font-style: normal;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  opacity: .75;
+}

@@ -2,32 +2,29 @@ name: Surveillance
 
 on:
   schedule:
-    - cron: '0 5 * * *'   # tous les jours, 6 h 
+    - cron: '0 5 7 * *'   # tous les jours, 6 h (heure d'hiver)
   workflow_dispatch:
-    inputs:
-      environment:
-        description: Environnement à vérifier
-        type: choice
-        options: [production, preview]
-        default: production
 
-permissions:
-  contents: read
+permissions: {}
+
+concurrency:
+  group: surveillance
+  cancel-in-progress: false
 
 jobs:
-  check:
-    name: ${{ matrix.environment }}
-    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+  production:
+    name: Production
+    if: github.repository == 'appen-isen/site-interpromos-2026' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        environment: ${{ fromJSON(github.event_name == 'workflow_dispatch' && format('["{0}"]', inputs.environment) || '["preview","production"]') }}
-    environment: ${{ matrix.environment }}
+    # Environnement séparé, sans relecteurs : « production » exige une approbation, ce qui bloquerait
+    # la vérification quotidienne. Mêmes secrets, idéalement avec un compte base de données en lecture seule.
+    environment: surveillance
+    permissions:
+      contents: read
 
     env:
-      CHECK_ENV: ${{ matrix.environment }}
+      CHECK_ENV: production
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -35,15 +32,37 @@ jobs:
       APP_URL: ${{ vars.APP_URL }}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: npm
 
       - name: Installation des dépendances
-        run: npm ci --omit=dev
+        run: npm ci --omit=dev --ignore-scripts
 
       - name: Vérification des connexions (lecture seule)
         run: npm run check:connections
+
+  audit:
+    name: Failles des dépendances
+    if: github.repository == 'appen-isen/site-interpromos-2026'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version-file: .nvmrc
+
+      # Une faille publiée après la dernière modification du code est repérée ici sans attendre une PR
+      - name: Audit des dépendances de production
+        run: npm audit --omit=dev --audit-level=high

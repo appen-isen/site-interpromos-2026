@@ -1,0 +1,307 @@
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+    FieldErrors:
+      type: object
+      required: [errors]
+      properties:
+        errors:
+          type: object
+          additionalProperties: { type: string }
+          examples:
+            - team: 'Donnez un nom à votre équipe.'
+              players: 'Joueur saisi deux fois : Prénom Nom.'
+
+    Session:
+      type: object
+      properties:
+        authenticated: { type: boolean, const: true }
+        role: { type: string, const: bds }
+        token: { type: string, description: 'Jeton d''accès (JWT) à envoyer en `Authorization: Bearer`' }
+        refreshToken: { type: [string, 'null'], description: Pour /api/auth/refresh (null en mode test) }
+        expiresAt: { type: integer, description: Expiration du jeton (millisecondes depuis 1970) }
+        email: { type: string, format: email }
+
+    Promo:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, examples: [A1] }
+        mascot: { type: string, examples: [Les Bits] }
+
+    Sport:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        indice: { type: integer, description: Position du sport (0 = Football) }
+        name: { type: string }
+        short: { type: string }
+        venue: { type: string }
+        minPlayers: { type: integer }
+        maxPlayers: { type: integer }
+        poids: { type: integer, description: Coefficient appliqué aux points }
+
+    Config:
+      type: object
+      properties:
+        sports: { type: array, items: { type: string } }
+        short: { type: array, items: { type: string } }
+        venue: { type: array, items: { type: string } }
+        size: { type: array, items: { type: integer }, description: Joueurs minimum par sport }
+        promos: { type: array, items: { type: string } }
+        mascot: { type: object, additionalProperties: { type: string } }
+        days: { $ref: '#/components/schemas/EditionDays' }
+        albums: { type: array, items: { type: string } }
+        edition: { $ref: '#/components/schemas/Edition' }
+
+    EditionDays:
+      type: array
+      description: '[date, phase, code court] pour chaque jour, ex. ["Mar. 3 nov.", "Qualifs J1", "J1"]'
+      items: { type: array, items: { type: string }, minItems: 3, maxItems: 3 }
+
+    Edition:
+      type: object
+      properties:
+        year: { type: integer, examples: [2026] }
+        shortYear: { type: string, examples: ['26'] }
+        start: { type: string, format: date, description: Premier jour }
+        end: { type: string, format: date, description: Dernier jour }
+        time: { type: string, examples: ['13:00'], description: Heure du coup d'envoi (heure de Paris) }
+        venue: { type: string, examples: [ISEN Nantes] }
+        contact: { type: [string, 'null'], format: email, description: Adresse de contact affichée sur le site }
+        instagram: { type: [string, 'null'], description: Compte Instagram du BDS, sans @, examples: [bds_isen_nantes] }
+        startsAt: { type: string, format: date-time, description: Coup d'envoi avec fuseau (compte à rebours) }
+        range: { type: string, examples: ['3 – 5 novembre'] }
+        registrations: { $ref: '#/components/schemas/RegistrationWindow' }
+        tv: { $ref: '#/components/schemas/TvSettings' }
+        days: { $ref: '#/components/schemas/EditionDays' }
+
+    TvSettings:
+      type: object
+      properties:
+        sport: { type: [integer, 'null'], description: Indice du sport affiché sur l'écran TV (null = tous) }
+        message: { type: [string, 'null'], description: Message défilant du BDS }
+
+    RegistrationWindow:
+      type: object
+      properties:
+        open: { type: boolean, description: Le formulaire public accepte les inscriptions }
+        manualOpen: { type: boolean, description: Interrupteur du BDS (false = fermées à la main) }
+        deadline: { type: [string, 'null'], format: date-time, description: Échéance choisie par le BDS (null = coup d'envoi) }
+        deadlineLocal: { type: [string, 'null'], description: Même échéance en heure de Paris (AAAA-MM-JJTHH:MM) }
+        closesAt: { type: string, format: date-time, description: Clôture effective (échéance ou coup d'envoi) }
+        reason: { type: [string, 'null'], enum: [manual, deadline, start, null], description: Raison de la fermeture }
+
+    InstagramPost:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, description: Identifiant du post dans son adresse, examples: [DAbcdEFGhij] }
+        type: { type: string, enum: [post, reel] }
+        url: { type: string, format: uri, examples: ['https://www.instagram.com/reel/DAbcdEFGhij/'] }
+        video: { type: [string, 'null'], description: Vidéo jointe par le BDS, lue en boucle sur le site }
+        hero: { type: boolean, description: Vidéo affichée en tête de l'accueil }
+
+    MatchStatus:
+      type: string
+      enum: [up, live, done]
+      description: '`up` = à venir, `live` = en direct, `done` = terminé (compté au classement)'
+
+    MatchInput:
+      type: object
+      properties:
+        d: { type: integer, enum: [0, 1, 2], description: Jour }
+        t: { type: string, pattern: '^\d{2}:\d{2}$', examples: ['14:30'] }
+        si: { type: integer, description: Indice du sport }
+        teamA: { type: string, format: uuid, description: "Équipe A (obligatoire à la création). Équipe officielle ou inscription validée, inscrite dans le sport du match" }
+        teamB: { type: string, format: uuid, description: Équipe B (différente de l'équipe A) }
+        venue: { type: string }
+        phase: { type: string, enum: [Qualification, Petite finale, Finale] }
+        status: { $ref: '#/components/schemas/MatchStatus' }
+        scoreA: { type: integer, minimum: 0 }
+        scoreB: { type: integer, minimum: 0 }
+
+    Match:
+      type: object
+      properties:
+        id: { type: string, description: Code lisible du match (`code_match`) }
+        dbId: { type: string, format: uuid }
+        d: { type: integer }
+        si: { type: integer }
+        sport: { type: string }
+        t: { type: string }
+        a: { type: string, description: Promo de l'équipe A }
+        b: { type: string, description: Promo de l'équipe B }
+        teamAId: { type: string, format: uuid }
+        teamBId: { type: string, format: uuid }
+        teamAName: { type: string }
+        teamBName: { type: string }
+        venue: { type: string }
+        phase: { type: string }
+        status: { $ref: '#/components/schemas/MatchStatus' }
+        scores: { type: array, items: { type: integer }, minItems: 2, maxItems: 2 }
+        gagnant: { type: [string, 'null'], format: uuid }
+
+    MatchWithStandings:
+      type: object
+      properties:
+        match: { $ref: '#/components/schemas/Match' }
+        standings: { $ref: '#/components/schemas/Standings' }
+
+    StandingRow:
+      type: object
+      description: Ligne de classement d'une équipe
+      properties:
+        id: { type: string, format: uuid, description: Équipe }
+        team: { type: string, description: Nom de l'équipe }
+        p: { type: string, description: Promo de l'équipe }
+        mascot: { type: string }
+        si: { type: integer, description: Indice du sport }
+        sport: { type: string }
+        v: { type: integer, description: Victoires }
+        n: { type: integer, description: Nuls }
+        l: { type: integer, description: Défaites }
+        pts: { type: integer, description: Points (3 / 1 / 0, multipliés par le coefficient du sport) }
+        pos: { type: integer }
+        rec: { type: string, examples: ['2 · 1 · 0'] }
+        w: { type: string, description: Largeur de barre (% du leader) }
+
+    Standings:
+      type: object
+      properties:
+        general:
+          type: array
+          description: Toutes les équipes, tous sports confondus
+          items: { $ref: '#/components/schemas/StandingRow' }
+        bySport:
+          type: array
+          items:
+            type: object
+            properties:
+              sport: { type: string }
+              si: { type: integer }
+              coef: { type: integer }
+              standings: { type: array, description: Équipes du sport, items: { $ref: '#/components/schemas/StandingRow' } }
+
+    PlayerDetail:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        fullName: { type: string }
+        ordre: { type: integer }
+
+    Team:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        p: { type: string, description: Code promo }
+        si: { type: integer }
+        sport: { type: string }
+        minPlayers: { type: integer }
+        maxPlayers: { type: integer }
+        name: { type: string }
+        captain: { type: string }
+        email: { type: string, description: Uniquement avec un jeton BDS }
+        players: { type: integer }
+        playersList: { type: array, items: { type: string } }
+        playersDetails: { type: array, items: { $ref: '#/components/schemas/PlayerDetail' } }
+        points: { type: integer }
+        status: { $ref: '#/components/schemas/RegistrationStatus' }
+        isRegistration: { type: boolean, description: Équipe issue d'une inscription en ligne }
+        rec: { type: string, examples: ['2V 0N 1D'] }
+
+    TeamInput:
+      type: object
+      properties:
+        promo: { type: string, examples: [A1] }
+        si: { type: integer }
+        name: { type: string }
+        captain: { type: string }
+        email: { type: string, format: email }
+        maxPlayers: { type: integer }
+        playersList: { type: array, items: { type: string } }
+
+    RegistrationStatus:
+      type: string
+      enum: [En attente, Validée, Refusée]
+
+    Registration:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        team: { type: string }
+        promo: { type: string }
+        sport: { type: string }
+        captain: { type: string }
+        email: { type: string, description: Uniquement avec un jeton BDS (et pour le dossier qu'on vient d'envoyer) }
+        players: { type: integer }
+        date: { type: string, examples: [30 oct.] }
+        status: { $ref: '#/components/schemas/RegistrationStatus' }
+        playersList: { type: array, items: { type: string } }
+
+    Album:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        published: { type: boolean }
+        start: { type: [string, 'null'], format: date, description: Date de l'événement (classement passé / en cours / à venir) }
+        end: { type: [string, 'null'], format: date }
+        count: { type: integer }
+
+    AlbumInput:
+      type: object
+      properties:
+        name: { type: string, maxLength: 80 }
+        start: { type: [string, 'null'], format: date }
+        end: { type: [string, 'null'], format: date, description: Postérieure ou égale à start }
+        published: { type: boolean, default: true }
+
+    AlbumVisibility:
+      type: object
+      description: Visibilité de chaque album, par nom
+      additionalProperties: { type: boolean }
+
+    MediaMime:
+      type: string
+      enum: [image/jpeg, image/png, image/webp, image/gif, video/mp4, video/webm, video/quicktime]
+
+    Media:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        i: { type: integer, description: Ordre }
+        album: { type: string }
+        albumPublished: { type: boolean }
+        caption: { type: string }
+        url: { type: string }
+        big: { type: boolean }
+        type: { type: string, enum: [image, video] }
+        slot: { type: [string, 'null'], enum: [hero, null] }
+
+    MediaSlots:
+      type: object
+      properties:
+        hero: { $ref: '#/components/schemas/Media' }
+
+    Gallery:
+      type: object
+      properties:
+        albums: { type: array, items: { $ref: '#/components/schemas/Album' } }
+        pub: { $ref: '#/components/schemas/AlbumVisibility' }
+        photos: { type: array, items: { $ref: '#/components/schemas/Media' } }
+        slots: { $ref: '#/components/schemas/MediaSlots' }
+
+    AdminGallery:
+      allOf:
+        - $ref: '#/components/schemas/Gallery'
+        - type: object
+          properties:
+            upload:
+              type: object
+              properties:
+                mode: { type: string, enum: [direct, api], description: '`direct` = envoi vers Supabase Storage' }
+                maxBytes: { type: integer }

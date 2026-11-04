@@ -58,8 +58,13 @@ export async function changeMatchStatus(id, status, resetScores = false) {
 
 export async function submitMatchForm() {
   const mf = state.matchForm;
-  if (mf.a === mf.b) {
-    mf.error = 'Veuillez sélectionner deux promotions différentes (Promo A ≠ Promo B).';
+  if (!mf.teamA || !mf.teamB) {
+    mf.error = 'Choisissez les deux équipes du match.';
+    mf.success = '';
+    return;
+  }
+  if (mf.teamA === mf.teamB) {
+    mf.error = 'Choisissez deux équipes différentes.';
     mf.success = '';
     return;
   }
@@ -72,8 +77,8 @@ export async function submitMatchForm() {
     d: Number(mf.d),
     t: String(mf.t || '13:30').trim(),
     si: Number(mf.si),
-    a: mf.a,
-    b: mf.b,
+    teamA: mf.teamA,
+    teamB: mf.teamB,
     venue: String(mf.venue || VENUE[mf.si] || '').trim(),
     phase: mf.phase || 'Qualification',
     status: mf.status || 'up',
@@ -144,7 +149,8 @@ export async function generateTournamentMatches(clearExisting = false) {
     if (res.ok && !data._nonJson) {
       if (Array.isArray(data.matches)) state.matches = data.matches;
       await fetchInitialState();
-      state.matchForm.success = `${data.createdCount || 0} match(s) généré(s) automatiquement dans le planning.`;
+      state.matchForm.success = `${data.createdCount || 0} match(s) généré(s) automatiquement dans le planning.`
+        + (data.skippedSports ? ` ${data.skippedSports} sport(s) ignoré(s) faute de deux équipes inscrites.` : '');
     } else {
       state.matchForm.error = data.error || 'Erreur lors de la génération du planning.';
     }

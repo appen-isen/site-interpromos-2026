@@ -1,0 +1,265 @@
+  /api/gallery:
+    get:
+      tags: [Galerie]
+      summary: Galerie publique
+      description: Médias des albums publiés, sans le média affiché en tête de l'accueil (slot `hero`).
+      operationId: getGallery
+      parameters:
+        - { name: album, in: query, schema: { type: string }, description: Nom de l'album (`Tout` = tous) }
+      responses:
+        '200':
+          description: Galerie
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Gallery' }
+
+  /api/gallery/albums:
+    post:
+      tags: [Galerie]
+      summary: Créer un album / événement
+      operationId: createAlbum
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlbumInput' }
+      responses:
+        '201':
+          description: Album créé
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/AdminGallery'
+                  - type: object
+                    properties:
+                      albumId: { type: string, format: uuid }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    patch:
+      tags: [Galerie]
+      summary: Publier / masquer un album (par son nom)
+      operationId: toggleAlbumVisibility
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                published: { type: boolean, description: Absent = inverser l'état actuel }
+      responses:
+        '200':
+          description: Visibilité mise à jour
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  name: { type: string }
+                  published: { type: boolean }
+                  pub: { $ref: '#/components/schemas/AlbumVisibility' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/gallery/albums/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    put:
+      tags: [Galerie]
+      summary: Modifier un album
+      operationId: updateAlbum
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/AlbumInput' }
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+    delete:
+      tags: [Galerie]
+      summary: Supprimer un album vide
+      operationId: deleteAlbum
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  # ---------------------------------------------------------------------------
+  # Médias
+  # ---------------------------------------------------------------------------
+  /api/media:
+    get:
+      tags: [Médias]
+      summary: Tous les médias (admin), y compris albums en brouillon
+      operationId: listMedia
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/media/upload-url:
+    post:
+      tags: [Médias]
+      summary: '1/2 — Préparer un envoi direct vers Supabase Storage'
+      description: |
+        Mode `direct` (Supabase configuré). Le navigateur envoie ensuite le fichier brut avec
+        `PUT <uploadUrl>` (en-têtes `Content-Type` et `x-upsert: false`), puis appelle `/api/media/complete`.
+      operationId: createMediaUploadUrl
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, size]
+              properties:
+                type: { $ref: '#/components/schemas/MediaMime' }
+                size: { type: integer, description: Taille en octets }
+      responses:
+        '200':
+          description: URL signée (valable 2 h, un seul envoi)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  objectPath: { type: string, examples: [galerie/2026-10-30-a1b2c3d4e5f6a7b8.mp4] }
+                  uploadUrl: { type: string, format: uri }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMedia' }
+        '502': { $ref: '#/components/responses/StorageError' }
+
+  /api/media/complete:
+    post:
+      tags: [Médias]
+      summary: '2/2 — Enregistrer un média envoyé directement'
+      description: Vérifie le vrai format du fichier (signature binaire) puis l'ajoute à l'album. Un fichier refusé est supprimé du stockage.
+      operationId: completeMediaUpload
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [objectPath]
+              properties:
+                objectPath: { type: string }
+                fileName: { type: string }
+                album: { type: string, description: Nom de l'album (sinon le premier album) }
+                caption: { type: string, maxLength: 200 }
+      responses:
+        '201': { $ref: '#/components/responses/MediaCreated' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '415': { $ref: '#/components/responses/UnsupportedMedia' }
+
+  /api/media/upload:
+    post:
+      tags: [Médias]
+      summary: Envoyer un média via l'API (mode local)
+      description: |
+        Mode `api` (sans Supabase, développement). Corps = fichier brut. Limité à 4,5 Mo sur Vercel :
+        en production, utiliser `/api/media/upload-url`.
+      operationId: uploadMedia
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: X-File-Name, in: header, schema: { type: string }, description: Nom du fichier (encodeURIComponent) }
+        - { name: X-Album, in: header, schema: { type: string }, description: Album (encodeURIComponent) }
+        - { name: X-Caption, in: header, schema: { type: string }, description: Légende (encodeURIComponent) }
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema: { type: string, format: binary }
+          video/*:
+            schema: { type: string, format: binary }
+      responses:
+        '201': { $ref: '#/components/responses/MediaCreated' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '413': { $ref: '#/components/responses/TooLarge' }
+        '415': { $ref: '#/components/responses/UnsupportedMedia' }
+        '502': { $ref: '#/components/responses/StorageError' }
+
+  /api/media/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    patch:
+      tags: [Médias]
+      summary: Modifier un média
+      operationId: updateMedia
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                caption: { type: string, maxLength: 200 }
+                album: { type: string, description: Déplacer vers cet album (nom) }
+                big: { type: boolean, description: Grand format (2×2) dans la galerie }
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Médias]
+      summary: Supprimer un média et son fichier
+      operationId: deleteMedia
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/media/slots/{slot}:
+    parameters:
+      - name: slot
+        in: path
+        required: true
+        schema: { type: string, enum: [hero] }
+        description: '`hero` = média affiché en tête de la page d''accueil'
+    put:
+      tags: [Médias]
+      summary: Placer un média sur l'accueil (ou l'en retirer)
+      operationId: setMediaSlot
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mediaId:
+                  type: [string, 'null']
+                  format: uuid
+                  description: '`null` pour retirer le média actuel'
+      responses:
+        '200': { $ref: '#/components/responses/AdminGalleryResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------------------
+  # Import
+  # ---------------------------------------------------------------------------

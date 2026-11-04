@@ -1,4 +1,4 @@
-import { esc } from './utils.js';
+import { esc, teamTag } from './utils.js';
 import { state, EDITION } from './state.js';
 import { renderThemeToggle } from './theme.js';
 
@@ -21,9 +21,9 @@ export function renderPublicHeader(liveList) {
         ${liveList.map(g => `
           <button data-action="go-planning-day" data-day="${g.d}" class="hover-surface" style="display:flex;align-items:center;gap:10px;padding:10px 20px;border:0;border-right:1px solid var(--line);background:transparent;color:var(--text);font:13px var(--font-body);cursor:pointer;flex:none">
             <span style="color:var(--muted)">${esc(g.sport)}</span>
-            <strong>${esc(g.a)}</strong>
+            <strong>${teamTag(g.teamAName, g.a)}</strong>
             <span style="font-weight:800;font-variant-numeric:tabular-nums;color:var(--accent)">${esc(g.score)}</span>
-            <strong>${esc(g.b)}</strong>
+            <strong>${teamTag(g.teamBName, g.b)}</strong>
           </button>
         `).join('')}
       </div>

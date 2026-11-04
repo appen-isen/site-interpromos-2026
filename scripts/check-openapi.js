@@ -1,16 +1,25 @@
-// Vérifie que docs/openapi.yaml est un document valide et cohérent avec le code :
+// Vérifie que la spécification OpenAPI (docs/openapi/, assemblée par backend/api/docs.js) est valide et cohérente avec le code :
 // Usage : npm run check:openapi
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { parse, YAMLParseError } from 'yaml';
+import { readOpenApiSpec } from '../backend/api/docs.js';
 
 const root = new URL('../', import.meta.url);
 const app = readFileSync(new URL('app.js', root), 'utf-8');
 const errors = [];
 
+// Chaque fichier de docs/openapi/ doit être listé dans backend/api/docs.js (sinon il ne serait pas servi)
+const docsSource = readFileSync(new URL('backend/api/docs.js', root), 'utf-8');
+for (const dir of ['paths', 'components']) {
+    for (const file of readdirSync(new URL(`docs/openapi/${dir}/`, root)).filter(f => f.endsWith('.yaml'))) {
+        if (!docsSource.includes(`docs/openapi/${dir}/${file}`)) errors.push(`docs/openapi/${dir}/${file} n'est pas listé dans backend/api/docs.js`);
+    }
+}
+
 let spec;
 try {
-    spec = parse(readFileSync(new URL('docs/openapi.yaml', root), 'utf-8'), { prettyErrors: true, uniqueKeys: true });
+    spec = parse(await readOpenApiSpec(), { prettyErrors: true, uniqueKeys: true });
 } catch (err) {
     const where = err instanceof YAMLParseError && err.linePos ? ` (ligne ${err.linePos[0].line})` : '';
     console.error(`openapi.yaml illisible${where} :\n${err.message}`);

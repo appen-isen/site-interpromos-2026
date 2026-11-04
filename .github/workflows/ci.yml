@@ -2,53 +2,152 @@
 name: CI
 
 on:
-  push:
-    branches: ['**']
   pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: Mettre en production après les tests (branche main, après approbation)
+        type: boolean
+        default: false
+      migrate:
+        description: Migrer aussi la base de production pendant la mise en production
+        type: boolean
+        default: false
 
-permissions:
-  contents: read
+
+permissions: {}
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  changes:
+    name: Fichiers modifiés
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+    outputs:
+      site: ${{ steps.filter.outputs.site }}
+      server: ${{ steps.filter.outputs.server }}
+      database: ${{ steps.filter.outputs.database }}
+      api-docs: ${{ steps.filter.outputs.api-docs }}
+      deps: ${{ steps.filter.outputs.deps }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Détection des répertoires touchés
+        id: filter
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          all() {
+            echo "$1 : tous les contrôles sont lancés."
+            for key in site server database api-docs deps; do echo "$key=true" >> "$GITHUB_OUTPUT"; done
+            exit 0
+          }
+
+          case "$EVENT" in
+            pull_request) base="$PR_BASE"; head="$PR_HEAD" ;;
+            push) base="$PUSH_BEFORE"; head="$PUSH_AFTER" ;;
+            *) all "Lancement manuel" ;;
+          esac
+          # Nouvelle branche ou historique réécrit : rien de fiable à comparer
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
+            all "Point de comparaison introuvable"
+          fi
+
+          files=$(git diff --name-only "$base...$head")
+          echo "Fichiers modifiés :"; echo "$files" | sed 's/^/  /'
+
+          if echo "$files" | grep -qE '^\.github/workflows/'; then all "Workflows modifiés"; fi
+
+          has() { if echo "$files" | grep -qE "$1"; then echo true; else echo false; fi; }
+          {
+            echo "site=$(has '^public/')"
+            echo "server=$(has '^(app\.js|index\.js|backend/|scripts/|package(-lock)?\.json|\.nvmrc)')"
+            echo "database=$(has '^(backend/sql/|backend/data/|scripts/migrate\.js)')"
+            echo "api-docs=$(has '^(docs/openapi/|backend/api/|app\.js|scripts/check-openapi\.js)')"
+            echo "deps=$(has '^(package(-lock)?\.json|\.nvmrc)')"
+          } | tee -a "$GITHUB_OUTPUT"
+
   static:
     name: Contrôles statiques
-    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork
+    needs: changes
+    if: >-
+      needs.changes.outputs.site == 'true' || needs.changes.outputs.server == 'true'
+      || needs.changes.outputs.api-docs == 'true' || needs.changes.outputs.deps == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: npm
 
+      # --ignore-scripts : aucun script d'installation des dépendances n'est exécuté
       - name: Installation des dépendances
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Syntaxe JavaScript
+        if: needs.changes.outputs.site == 'true' || needs.changes.outputs.server == 'true'
         run: npm run check:syntax
 
       - name: Cohérence de la documentation OpenAPI
+        if: needs.changes.outputs.api-docs == 'true' || needs.changes.outputs.server == 'true'
         run: npm run check:openapi
 
       - name: Audit de sécurité des dépendances
+        if: needs.changes.outputs.deps == 'true'
         run: npm audit --omit=dev --audit-level=high
+
+  dependency-review:
+    name: Revue des nouvelles dépendances
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.deps == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+          comment-summary-in-pr: never
 
   integration:
     name: Intégration (PostgreSQL ${{ matrix.postgres }})
-    needs: static
+    needs: [changes, static]
+    if: >-
+      !cancelled() && needs.static.result != 'failure'
+      && (needs.changes.outputs.server == 'true' || needs.changes.outputs.database == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
-        # Versions 
+        # Version de Supabase (15) et version récente (17)
         postgres: ['15', '17']
 
     services:
@@ -77,15 +176,17 @@ jobs:
       CHECK_ADMIN: '1'
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: npm
 
       - name: Installation des dépendances
-        run: npm ci
+        run: npm ci --ignore-scripts
 
       - name: Migration sur une base vierge
         run: npm run db:migrate
@@ -109,48 +210,104 @@ jobs:
 
       - name: Journal du serveur
         if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: server-log-postgres-${{ matrix.postgres }}
           path: server.log
           retention-days: 7
 
-  migrate-production:
-    name: Migration production
-    needs: integration
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+  
+  ci-result:
+    name: CI
+    needs: [changes, static, dependency-review, integration]
+    if: always()
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-    environment: production
-    # Une seule migration à la fois, et jamais interrompue en cours de route
+    timeout-minutes: 2
+    permissions: {}
+    steps:
+      - name: Bilan
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "Résultats : $RESULTS"
+          for result in $RESULTS; do
+            case "$result" in
+              failure|cancelled) echo "::error::Au moins un contrôle a échoué ou a été annulé."; exit 1 ;;
+            esac
+          done
+          echo "Tous les contrôles nécessaires sont passés."
+
+  deploy-production:
+    name: Mise en production
+    needs: [changes, ci-result]
+    # Sur main uniquement, après des tests verts, quand le site ou le serveur a changé (ou à la demande).
+    # Le job attend l'approbation d'un relecteur de l'environnement « production » avant de démarrer.
+    if: >-
+      needs.ci-result.result == 'success'
+      && github.ref == 'refs/heads/main'
+      && github.repository == 'appen-isen/site-interpromos-2026'
+      && (
+        (github.event_name == 'push' && (
+          needs.changes.outputs.site == 'true' || needs.changes.outputs.server == 'true'
+          || needs.changes.outputs.database == 'true' || needs.changes.outputs.api-docs == 'true'
+          || needs.changes.outputs.deps == 'true'))
+        || (github.event_name == 'workflow_dispatch' && inputs.deploy)
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Relecteurs obligatoires, branche main uniquement, secrets de production :
+    # Settings → Environments → production
+    environment:
+      name: production
+      url: ${{ vars.APP_URL }}
+    permissions:
+      contents: read
+    # Une seule mise en production à la fois, jamais interrompue. Si plusieurs fusions attendent
+    # l'approbation, seule la plus récente reste en attente.
     concurrency:
-      group: migration-production
+      group: production
       cancel-in-progress: false
 
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      MIGRATE: ${{ needs.changes.outputs.database == 'true' || (github.event_name == 'workflow_dispatch' && inputs.migrate) }}
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
 
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version-file: .nvmrc
           cache: npm
 
       - name: Installation des dépendances
-        run: npm ci --omit=dev
+        run: npm ci --omit=dev --ignore-scripts
 
       - name: Configuration
         run: |
-          if [ -z "$DATABASE_URL" ]; then
-            echo "::error::Secret DATABASE_URL absent de l'environnement GitHub « production »"
+          missing=""
+          for name in DATABASE_URL VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            [ -z "${!name}" ] && missing="$missing $name"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Secret(s) absent(s) de l'environnement GitHub « production » :$missing"
             exit 1
           fi
 
+      # Avant le déploiement : le nouveau code trouve un schéma à jour (les migrations n'ajoutent que des colonnes et des vues)
       # Refuse une base marquée « development » ; marque la base « production » au premier passage
       - name: Migration du schéma
+        if: env.MIGRATE == 'true'
         run: node scripts/migrate.js --production
+
+      # Les déploiements automatiques de Vercel sont coupés (vercel.json) : la prod ne change que par ce job approuvé
+      - name: Déploiement Vercel
+        run: npx --yes vercel@65.11.0 deploy --prod --yes --token "$VERCEL_TOKEN"
 
       - name: Vérification de la production (lecture seule)
         env:
@@ -160,53 +317,3 @@ jobs:
           SUPABASE_STORAGE_BUCKET: ${{ vars.SUPABASE_STORAGE_BUCKET }}
           APP_URL: ${{ vars.APP_URL }}
         run: npm run check:connections
-
-  pr-develop:
-    name: Pull request vers develop
-    needs: integration
-    # Branches de travail uniquement (ni main, ni develop, ni les mises à jour Dependabot qui ont leur propre PR)
-    if: >-
-      github.event_name == 'push'
-      && github.ref_name != 'main'
-      && github.ref_name != 'develop'
-      && !startsWith(github.ref_name, 'dependabot/')
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    permissions:
-      contents: read
-      pull-requests: write
-
-    env:
-      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      BRANCH: ${{ github.ref_name }}
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          fetch-depth: 0
-
-      - name: Ouverture de la pull request
-        run: |
-          existing=$(gh pr list --head "$BRANCH" --base develop --state open --json url --jq '.[0].url')
-          if [ -n "$existing" ]; then
-            echo "Pull request déjà ouverte : $existing (mise à jour automatiquement par ce push)"
-            exit 0
-          fi
-
-          ahead=$(git rev-list --count "origin/develop..HEAD")
-          if [ "$ahead" -eq 0 ]; then
-            echo "Rien à fusionner : $BRANCH ne contient aucun commit absent de develop."
-            exit 0
-          fi
-
-          body=$(printf '%s\n' \
-            "Pull request ouverte automatiquement : tous les tests de \`$BRANCH\` sont passés (contrôles statiques et intégration PostgreSQL 15 et 17)." \
-            "" \
-            "Commits à fusionner dans \`develop\` ($ahead) :" \
-            "" \
-            "$(git log --format='- %s' "origin/develop..HEAD")")
-
-          if ! gh pr create --base develop --head "$BRANCH" --title "Merge $BRANCH into develop" --body "$body"; then
-            echo "::error::Création refusée. Vérifiez Settings → Actions → General → « Allow GitHub Actions to create and approve pull requests »."
-            exit 1
-          fi

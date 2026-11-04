@@ -149,6 +149,10 @@ CREATE TABLE IF NOT EXISTS edition(
     lieu TEXT NOT NULL DEFAULT 'ISEN Nantes',
     contact_email TEXT,                        -- adresse de contact affichée sur le site (facultative)
     instagram TEXT,                            
+    inscriptions_ouvertes BOOLEAN NOT NULL DEFAULT TRUE,  -- interrupteur manuel du BDS
+    inscriptions_fin TIMESTAMPTZ,              -- échéance choisie par le BDS (vide = coup d'envoi du tournoi)
+    tv_sport INT,                              -- mode TV : sport affiché (indice ; vide = tous)
+    tv_message TEXT,                           -- mode TV : message défilant du BDS
     modifie_le TIMESTAMPTZ NOT NULL DEFAULT clock_timestamp(),
 
     PRIMARY KEY (id),
@@ -174,6 +178,10 @@ ALTER TABLE albums ADD COLUMN IF NOT EXISTS date_debut DATE;
 ALTER TABLE albums ADD COLUMN IF NOT EXISTS date_fin DATE;
 ALTER TABLE edition ADD COLUMN IF NOT EXISTS contact_email TEXT;
 ALTER TABLE edition ADD COLUMN IF NOT EXISTS instagram TEXT;
+ALTER TABLE edition ADD COLUMN IF NOT EXISTS inscriptions_ouvertes BOOLEAN NOT NULL DEFAULT TRUE;
+ALTER TABLE edition ADD COLUMN IF NOT EXISTS inscriptions_fin TIMESTAMPTZ;
+ALTER TABLE edition ADD COLUMN IF NOT EXISTS tv_sport INT;
+ALTER TABLE edition ADD COLUMN IF NOT EXISTS tv_message TEXT;
 -- Nom de famille facultatif 
 ALTER TABLE participants ALTER COLUMN nom DROP NOT NULL;
 UPDATE participants SET nom = NULL WHERE nom ~ '^ISEN-' OR nom IN (SELECT code FROM promos);
@@ -217,47 +225,44 @@ CREATE TABLE IF NOT EXISTS sessions_revoquees(
 DROP VIEW IF EXISTS v_matchs_api;
 
 
-CREATE OR REPLACE VIEW v_classement_sport WITH (security_invoker = true) AS
+-- Classement par équipe (chaque équipe est rattachée à sa promo et à son sport) : général et par sport
+CREATE OR REPLACE VIEW v_classement_equipe WITH (security_invoker = true) AS
 
 WITH cotes AS (
-    SELECT m.id_sport, e.id_promo, m.score_equipe1 AS pour, m.score_equipe2 AS contre
-    FROM matchups m JOIN equipes e ON e.id = m.id_equipe1
-    WHERE m.statut = 'joue'
+    SELECT m.id_equipe1 AS id_equipe, m.score_equipe1 AS pour, m.score_equipe2 AS contre
+    FROM matchups m WHERE m.statut = 'joue'
     UNION ALL
-    SELECT m.id_sport, e.id_promo, m.score_equipe2 AS pour, m.score_equipe1 AS contre
-    FROM matchups m JOIN equipes e ON e.id = m.id_equipe2
-    WHERE m.statut = 'joue'
+    SELECT m.id_equipe2 AS id_equipe, m.score_equipe2 AS pour, m.score_equipe1 AS contre
+    FROM matchups m WHERE m.statut = 'joue'
 )
 SELECT
+    e.id AS id_equipe,
+    e.nom AS equipe,
     p.id AS id_promo,
     p.code AS promo,
     p.mascotte,
     s.id AS id_sport,
     s.indice AS si,
     s.nom AS sport,
-    COUNT(c.id_promo) FILTER (WHERE c.pour > c.contre)::INT AS v,
-    COUNT(c.id_promo) FILTER (WHERE c.pour = c.contre)::INT AS n,
-    COUNT(c.id_promo) FILTER (WHERE c.pour < c.contre)::INT AS l,
+    COUNT(c.id_equipe) FILTER (WHERE c.pour > c.contre)::INT AS v,
+    COUNT(c.id_equipe) FILTER (WHERE c.pour = c.contre)::INT AS n,
+    COUNT(c.id_equipe) FILTER (WHERE c.pour < c.contre)::INT AS l,
     -- Victoire 3 pts, nul 1 pt, défaite 0 pt, multipliés par le coefficient (poids) du sport
     (COALESCE(SUM(CASE WHEN c.pour > c.contre THEN 3 WHEN c.pour = c.contre THEN 1 ELSE 0 END), 0) * s.poids)::INT AS pts
-FROM promos p
-CROSS JOIN sports s
-LEFT JOIN cotes c ON c.id_promo = p.id AND c.id_sport = s.id
-GROUP BY p.id, p.code, p.mascotte, s.id, s.indice, s.nom, s.poids;
+FROM equipes e
+JOIN promos p ON p.id = e.id_promo
+JOIN sports s ON s.id = e.id_sport
+LEFT JOIN cotes c ON c.id_equipe = e.id
+-- Équipes officielles, inscriptions validées, et toute équipe qui a déjà joué
+WHERE e.est_inscription = FALSE
+   OR e.statut = 'Validée'
+   OR EXISTS (SELECT 1 FROM matchups m WHERE m.id_equipe1 = e.id OR m.id_equipe2 = e.id)
+GROUP BY e.id, e.nom, p.id, p.code, p.mascotte, s.id, s.indice, s.nom, s.poids;
 
 
-CREATE OR REPLACE VIEW v_classement_general WITH (security_invoker = true) AS
-SELECT
-    id_promo,
-    promo AS p,
-    mascotte AS mascot,
-    SUM(v)::INT AS v,
-    SUM(n)::INT AS n,
-    SUM(l)::INT AS l,
-    SUM(pts)::INT AS pts
-FROM v_classement_sport
-GROUP BY id_promo, promo, mascotte
-ORDER BY SUM(pts) DESC, SUM(v) DESC;
+-- Anciennes vues de classement par promo : le classement se fait désormais uniquement par équipe
+DROP VIEW IF EXISTS v_classement_general;
+DROP VIEW IF EXISTS v_classement_sport;
 
 
 ALTER TABLE promos            ENABLE ROW LEVEL SECURITY;
@@ -280,11 +285,11 @@ BEGIN
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
         REVOKE ALL ON promos, sports, equipes, participants, rejoindre_equipe, participer_sport,
             matchups, albums, photos, limites_requetes, sessions_revoquees, edition, meta_base, publications_instagram,
-            v_classement_sport, v_classement_general FROM anon;
+            v_classement_equipe FROM anon;
     END IF;
     IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
         REVOKE ALL ON promos, sports, equipes, participants, rejoindre_equipe, participer_sport,
             matchups, albums, photos, limites_requetes, sessions_revoquees, edition, meta_base, publications_instagram,
-            v_classement_sport, v_classement_general FROM authenticated;
+            v_classement_equipe FROM authenticated;
     END IF;
 END $$;

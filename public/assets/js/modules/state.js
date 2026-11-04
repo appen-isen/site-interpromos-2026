@@ -23,8 +23,28 @@ export let EDITION = {
   instagram: null,
   startsAt: '',
   range: '',
+  registrations: { open: true, manualOpen: true, deadline: null, deadlineLocal: null, closesAt: null, reason: null },
+  tv: { sport: null, message: null },
   days: DAYS
 };
+
+/**
+ * Statut des inscriptions recalculé à l'instant (la fermeture à l'échéance se fait même si la page reste ouverte).
+ * reason : 'manual' (fermées par le BDS), 'deadline' (échéance passée), 'start' (tournoi commencé) ou null.
+ */
+export function registrationStatus() {
+  const r = EDITION.registrations || {};
+  const closesAt = r.closesAt || EDITION.startsAt || null;
+  const manualOpen = r.manualOpen !== false;
+  const expired = closesAt ? Date.now() >= Date.parse(closesAt) : false;
+  return {
+    ...r,
+    closesAt,
+    manualOpen,
+    open: manualOpen && !expired,
+    reason: !manualOpen ? 'manual' : expired ? (r.deadline ? 'deadline' : 'start') : null
+  };
+}
 export let ALBUMS = [
   'Cérémonie & Ambiance',
   'Qualifications J1',
@@ -83,8 +103,8 @@ export function emptyMatchForm() {
     d: 0,
     t: '13:30',
     si: 0,
-    a: PROMOS[0] || 'A1',
-    b: PROMOS[1] || 'A2',
+    teamA: '',   // identifiant de l'équipe (chaque équipe est rattachée à sa promo)
+    teamB: '',
     venue: VENUE[0] || 'Terrain synthétique',
     phase: 'Qualification',
     status: 'up',
@@ -162,6 +182,10 @@ export const state = {
   albums: [],
   albumForm: emptyAlbumForm(),
   editionForm: null,
+  // Ouverture / clôture des inscriptions (Espace BDS > Inscriptions)
+  regSettings: { deadline: null, error: '', success: '', loading: false },
+  // Mode TV (Espace BDS > Scores en direct) : null = valeurs de l'édition en ligne
+  tvForm: { sport: null, message: null, error: '', success: '', loading: false },
   // Barre latérale de l'Espace BDS : ouverte par-dessus la page sur téléphone, réduite aux icônes sur ordinateur
   sideOpen: false,
   sideCollapsed: false,

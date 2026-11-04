@@ -35,7 +35,9 @@ export {
 } from './import.js';
 export {
   openEditionForm,
-  saveEdition
+  saveEdition,
+  saveRegistrationSettings,
+  saveTvSettings
 } from './edition.js';
 export {
   addInstagramPost,

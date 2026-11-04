@@ -1,0 +1,33 @@
+  /api/import/csv:
+    post:
+      tags: [Import]
+      summary: Importer les équipes d'une promo depuis un CSV
+      description: |
+        Deux formats : « fiche d'équipe » (une colonne par sport, en-têtes du type `Volleyball 1 (6)`)
+        ou lignes `Sport;Équipe;Capitaine;Joueurs`. Séparateur `;`.
+      operationId: importCsv
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [csvContent, promo]
+              properties:
+                csvContent: { type: string, description: Contenu du fichier CSV }
+                promo: { type: string, examples: [A1] }
+      responses:
+        '200':
+          description: Import réussi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  imported: { type: integer }
+                  importedTeams: { type: array, items: { type: object } }
+                  teams: { type: array, items: { $ref: '#/components/schemas/Team' } }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }

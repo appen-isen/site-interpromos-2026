@@ -1,0 +1,200 @@
+  /api/ping:
+    get:
+      tags: [Santé]
+      summary: Vérifier que l'API répond
+      operationId: ping
+      responses:
+        '200':
+          description: L'API répond
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, const: pong }
+
+  /api/docs/openapi.yaml:
+    get:
+      tags: [Santé]
+      summary: Cette documentation (réservée au BDS)
+      description: |
+        Spécification OpenAPI, servie uniquement aux membres du BDS connectés.
+        La page `/docs/` la charge avec le jeton de session ; les essais de requêtes y sont désactivés.
+      operationId: getOpenApi
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Spécification au format YAML
+          content:
+            text/yaml:
+              schema: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  # ---------------------------------------------------------------------------
+  # Authentification
+  # ---------------------------------------------------------------------------
+  /api/auth/login:
+    post:
+      tags: [Authentification]
+      summary: Se connecter à l'Espace BDS
+      description: Connexion transmise à Supabase Auth. Limité à 10 tentatives par adresse IP sur 15 minutes.
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Connexion réussie
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403':
+          description: Compte valide mais sans accès à l'Espace BDS (`app_metadata.role` différent de `bds`)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '502': { $ref: '#/components/responses/AuthUnavailable' }
+        '503':
+          description: Supabase Auth n'est pas configuré sur le serveur
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /api/auth/refresh:
+    post:
+      tags: [Authentification]
+      summary: Renouveler le jeton d'accès
+      description: À appeler avant l'expiration du jeton (`expiresAt`). Le jeton de renouvellement n'est utilisable qu'une fois.
+      operationId: refreshSession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties:
+                refreshToken: { type: string }
+      responses:
+        '200':
+          description: Nouvelle session
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '502': { $ref: '#/components/responses/AuthUnavailable' }
+
+  /api/auth/recover:
+    post:
+      tags: [Authentification]
+      summary: Mot de passe oublié
+      description: |
+        Supabase envoie un lien de réinitialisation qui ramène sur le site avec `#access_token=…&type=recovery`.
+        La réponse est identique que le compte existe ou non. Limité comme la connexion.
+      operationId: recoverPassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Demande prise en compte
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  sent: { type: boolean, const: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/auth/password:
+    post:
+      tags: [Authentification]
+      summary: Choisir un nouveau mot de passe
+      description: 'Avec le jeton reçu dans le lien de réinitialisation, envoyé en en-tête Authorization: Bearer.'
+      operationId: setPassword
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                password: { type: string, minLength: 10 }
+      responses:
+        '200':
+          description: Mot de passe modifié
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  updated: { type: boolean, const: true }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /api/auth/me:
+    get:
+      tags: [Authentification]
+      summary: Vérifier la session courante
+      operationId: me
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Session valide
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated: { type: boolean, const: true }
+                  role: { type: string, const: bds }
+                  email: { type: string, format: email }
+        '401':
+          description: Session absente, expirée ou révoquée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated: { type: boolean, const: false }
+
+  /api/auth/logout:
+    post:
+      tags: [Authentification]
+      summary: Se déconnecter
+      description: Ferme la session chez Supabase et bloque le jeton d'accès jusqu'à son expiration.
+      operationId: logout
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Déconnecté
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  authenticated: { type: boolean, const: false }
+
+  # ---------------------------------------------------------------------------
+  # Tournoi
+  # ---------------------------------------------------------------------------
