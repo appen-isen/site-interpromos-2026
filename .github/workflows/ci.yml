@@ -243,7 +243,8 @@ jobs:
     # Sur main uniquement, après des tests verts, quand le site ou le serveur a changé (ou à la demande).
     # Le job attend l'approbation d'un relecteur de l'environnement « production » avant de démarrer.
     if: >-
-      needs.ci-result.result == 'success'
+      !cancelled()
+      && needs.ci-result.result == 'success'
       && github.ref == 'refs/heads/main'
       && github.repository == 'appen-isen/site-interpromos-2026'
       && (
