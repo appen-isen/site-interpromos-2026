@@ -1,0 +1,96 @@
+/* Posts, reels et vidéos Instagram */
+
+/* Posts et reels Instagram (accueil et galerie) */
+.ig-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+
+.ig-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.ig-card iframe {
+  display: block;
+  width: 100%;
+  height: 620px; /* remplacée par la hauteur annoncée par Instagram une fois le post chargé */
+  border: 0;
+  background: #fff;
+}
+
+@media (max-width: 1024px) {
+  .ig-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .ig-section {
+    padding: 40px 20px !important;
+  }
+  .ig-section h2 {
+    font-size: 44px !important;
+  }
+  .ig-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Vidéo Instagram jointe : format vertical des reels, lecture en boucle */
+.ig-card-video {
+  position: relative;
+  aspect-ratio: 9 / 16;
+  max-height: 720px;
+  background: #000;
+}
+
+.ig-card-video video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ig-video-bar {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 28px 12px 12px;
+  background: linear-gradient(transparent, rgba(0, 0, 0, .6));
+}
+
+.ig-video-bar a,
+.ig-video-bar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 11px;
+  background: rgba(10, 9, 9, .6);
+  border: 1px solid rgba(255, 255, 255, .25);
+  color: #f3f2f2;
+  font: 600 12px var(--font-body);
+  text-decoration: none;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+
+.ig-video-bar a:hover,
+.ig-video-bar button:hover,
+.ig-video-bar button[aria-pressed="true"] {
+  background: #f0243f;
+  border-color: #f0243f;
+}
+
+/* Lien vers le post quand la vidéo d'accueil vient d'Instagram (même style que le bouton son, à gauche) */
+.hero-sound.hero-ig-link {
+  right: auto;
+  left: 16px;
+  text-decoration: none;
+}
