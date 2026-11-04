@@ -1,0 +1,181 @@
+  /api/state:
+    get:
+      tags: [Tournoi]
+      summary: État complet du tournoi en une requête
+      description: |
+        Configuration, matchs, classements, équipes, inscriptions et galerie publique.
+        Sans jeton BDS : pas d'e-mails et uniquement les inscriptions validées.
+      operationId: getState
+      security: [{}, { bearerAuth: [] }]
+      responses:
+        '200':
+          description: État du tournoi
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  config: { $ref: '#/components/schemas/Config' }
+                  matches:
+                    type: array
+                    items: { $ref: '#/components/schemas/Match' }
+                  standings: { $ref: '#/components/schemas/Standings' }
+                  teams:
+                    type: array
+                    items: { $ref: '#/components/schemas/Team' }
+                  regs:
+                    type: array
+                    items: { $ref: '#/components/schemas/Registration' }
+                  albums:
+                    type: array
+                    items: { $ref: '#/components/schemas/Album' }
+                  pub: { $ref: '#/components/schemas/AlbumVisibility' }
+                  photos:
+                    type: array
+                    items: { $ref: '#/components/schemas/Media' }
+                  slots: { $ref: '#/components/schemas/MediaSlots' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/edition:
+    get:
+      tags: [Tournoi]
+      summary: Édition en cours (année, dates, lieu)
+      operationId: getEdition
+      responses:
+        '200':
+          description: Édition
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Edition' }
+    put:
+      tags: [Tournoi]
+      summary: Modifier l'édition (année, premier jour, heure, lieu)
+      description: |
+        Le tournoi dure 3 jours à partir de `start`, qui doit tomber pendant l'année `year`.
+        Les matchs existants restent rattachés à leur jour (0, 1, 2).
+      operationId: updateEdition
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [year, start]
+              properties:
+                year: { type: integer, minimum: 2000, maximum: 2100, examples: [2027] }
+                start: { type: string, format: date, examples: ['2027-11-02'] }
+                time: { type: string, pattern: '^([01]\d|2[0-3]):[0-5]\d$', default: '13:00' }
+                venue: { type: string, maxLength: 80, default: ISEN Nantes }
+                contact: { type: [string, 'null'], format: email, description: Adresse de contact affichée sur le site (vide = rien) }
+                instagram: { type: [string, 'null'], description: 'Compte Instagram du BDS : « nom », « @nom » ou lien du profil (vide = rien)', examples: ['@bds_isen_nantes'] }
+      responses:
+        '200':
+          description: Édition mise à jour
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Edition' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/edition/registrations:
+    put:
+      tags: [Inscriptions]
+      summary: Ouvrir / fermer les inscriptions et régler l'échéance de clôture
+      description: |
+        Champs absents = inchangés. Les inscriptions sont ouvertes si `open` est vrai et que l'échéance n'est pas passée.
+        Sans échéance (`deadline` vide ou null), elles se ferment automatiquement au coup d'envoi du tournoi.
+      operationId: updateRegistrationSettings
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                open: { type: boolean, description: Interrupteur manuel du BDS }
+                deadline: { type: [string, 'null'], description: 'Échéance en heure de Paris (AAAA-MM-JJTHH:MM) ; vide ou null = coup d''envoi', examples: ['2026-10-30T23:59'] }
+      responses:
+        '200':
+          description: Statut des inscriptions
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegistrationWindow' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/edition/tv:
+    put:
+      tags: [Tournoi]
+      summary: Régler l'écran TV des scores (sport affiché, message défilant)
+      description: |
+        L'écran TV (`/tv`) relit ces réglages toutes les 15 secondes. Champs absents = inchangés.
+        Une adresse `/tv?sport=Basket` (nom ou indice) force un sport sur un écran donné.
+      operationId: updateTvSettings
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                sport: { type: [integer, 'null'], description: Indice du sport affiché (null = tous) }
+                message: { type: [string, 'null'], maxLength: 200, description: Message défilant (vide = aucun) }
+      responses:
+        '200':
+          description: Réglages de l'écran TV
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TvSettings' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/sports:
+    get:
+      tags: [Tournoi]
+      summary: Liste des sports
+      operationId: listSports
+      responses:
+        '200':
+          description: Sports, triés par indice
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Sport' }
+
+  /api/promos:
+    get:
+      tags: [Tournoi]
+      summary: Liste des promotions
+      operationId: listPromos
+      responses:
+        '200':
+          description: Promotions, triées par code
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Promo' }
+
+  /api/standings:
+    get:
+      tags: [Tournoi]
+      summary: Classements général et par sport
+      description: |
+        Calculés par les vues SQL `v_classement_sport` et `v_classement_general` à partir des matchs terminés :
+        victoire 3 pts, nul 1 pt, défaite 0 pt, multipliés par le coefficient du sport.
+        Départage : points, puis victoires, puis code de promo. Mis en cache 3 s par le CDN (sans jeton).
+      operationId: getStandings
+      responses:
+        '200':
+          description: Classements
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Standings' }
+
+  # ---------------------------------------------------------------------------
+  # Matchs
+  # ---------------------------------------------------------------------------

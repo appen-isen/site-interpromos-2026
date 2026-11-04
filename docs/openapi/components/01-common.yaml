@@ -1,0 +1,103 @@
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Jeton d'accès Supabase obtenu via `POST /api/auth/login` (renouvelable via `/api/auth/refresh`).
+
+  parameters:
+    Uuid:
+      name: id
+      in: path
+      required: true
+      schema: { type: string, format: uuid }
+    MatchId:
+      name: id
+      in: path
+      required: true
+      description: Code lisible du match (`code_match`, ex. `1-0-2`) ou son UUID
+      schema: { type: string }
+
+  responses:
+    BadRequest:
+      description: Requête invalide
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ValidationError:
+      description: Champs invalides ou déjà utilisés (doublon)
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/FieldErrors'
+              - $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Jeton absent, invalide, expiré ou révoqué
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    NotFound:
+      description: Élément introuvable (ou identifiant invalide)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    Conflict:
+      description: Opération impossible dans l'état actuel (doublon, élément encore utilisé)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooLarge:
+      description: Fichier ou corps de requête trop volumineux
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    UnsupportedMedia:
+      description: Format non pris en charge (JPG, PNG, WEBP, GIF, MP4, WEBM, MOV)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    StorageError:
+      description: Erreur du stockage des médias (Supabase Storage)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    AuthUnavailable:
+      description: Supabase Auth injoignable
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TooManyRequests:
+      description: Trop de tentatives depuis cette adresse IP
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    ServerError:
+      description: Erreur interne
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    TeamResult:
+      description: Équipe concernée et liste complète à jour
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              team: { $ref: '#/components/schemas/Team' }
+              teams: { type: array, items: { $ref: '#/components/schemas/Team' } }
+    AdminGalleryResult:
+      description: Galerie complète à jour (vue admin)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/AdminGallery' }
+    MediaCreated:
+      description: Média ajouté
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/AdminGallery'
+              - type: object
+                properties:
+                  mediaId: { type: string, format: uuid }

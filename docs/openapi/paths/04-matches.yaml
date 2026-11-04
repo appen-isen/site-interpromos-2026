@@ -1,0 +1,180 @@
+  /api/matches:
+    get:
+      tags: [Matchs]
+      summary: Liste des matchs
+      description: Mis en cache 3 s par le CDN (sans jeton), pour le rafraîchissement live des visiteurs.
+      operationId: listMatches
+      parameters:
+        - { name: day, in: query, schema: { type: integer, enum: [0, 1, 2] }, description: Jour du tournoi (0 = J1) }
+        - { name: sport, in: query, schema: { type: string }, description: Nom du sport }
+        - { name: status, in: query, schema: { $ref: '#/components/schemas/MatchStatus' } }
+      responses:
+        '200':
+          description: Matchs triés par jour, heure et sport
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Match' }
+    post:
+      tags: [Matchs]
+      summary: Programmer un match
+      operationId: createMatch
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MatchInput' }
+      responses:
+        '201':
+          description: Match créé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  match: { $ref: '#/components/schemas/Match' }
+                  matches: { type: array, items: { $ref: '#/components/schemas/Match' } }
+                  standings: { $ref: '#/components/schemas/Standings' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/matches/generate:
+    post:
+      tags: [Matchs]
+      summary: Générer automatiquement le planning
+      operationId: generateMatches
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clearExisting: { type: boolean, default: false, description: Supprimer d'abord les matchs existants }
+      responses:
+        '200':
+          description: Planning généré
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  createdCount: { type: integer }
+                  skippedSports: { type: integer, description: Sports ignorés (moins de deux équipes) }
+                  matches: { type: array, items: { $ref: '#/components/schemas/Match' } }
+                  standings: { $ref: '#/components/schemas/Standings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/matches/{id}:
+    parameters:
+      - $ref: '#/components/parameters/MatchId'
+    put:
+      tags: [Matchs]
+      summary: Modifier un match
+      operationId: updateMatch
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MatchInput' }
+      responses:
+        '200':
+          description: Match modifié
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  match: { $ref: '#/components/schemas/Match' }
+                  matches: { type: array, items: { $ref: '#/components/schemas/Match' } }
+                  standings: { $ref: '#/components/schemas/Standings' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Matchs]
+      summary: Supprimer un match
+      operationId: deleteMatch
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Match supprimé
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  matches: { type: array, items: { $ref: '#/components/schemas/Match' } }
+                  standings: { $ref: '#/components/schemas/Standings' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/matches/{id}/score:
+    parameters:
+      - $ref: '#/components/parameters/MatchId'
+    patch:
+      tags: [Matchs]
+      summary: Mettre à jour le score (live)
+      description: Soit un incrément (`teamIndex` + `delta`), soit les deux scores (`scoreA`, `scoreB`).
+      operationId: updateMatchScore
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - type: object
+                  required: [teamIndex, delta]
+                  properties:
+                    teamIndex: { type: integer, enum: [0, 1], description: 0 = équipe A, 1 = équipe B }
+                    delta: { type: integer, examples: [1, -1] }
+                - type: object
+                  required: [scoreA, scoreB]
+                  properties:
+                    scoreA: { type: integer, minimum: 0 }
+                    scoreB: { type: integer, minimum: 0 }
+      responses:
+        '200':
+          description: Score mis à jour
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchWithStandings' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/matches/{id}/status:
+    parameters:
+      - $ref: '#/components/parameters/MatchId'
+    patch:
+      tags: [Matchs]
+      summary: Démarrer, terminer ou réinitialiser un match
+      operationId: updateMatchStatus
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: '#/components/schemas/MatchStatus' }
+                resetScores: { type: boolean, default: false, description: Remettre le score à 0 – 0 }
+      responses:
+        '200':
+          description: Statut mis à jour
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MatchWithStandings' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------------------
+  # Équipes
+  # ---------------------------------------------------------------------------

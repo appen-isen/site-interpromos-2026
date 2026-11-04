@@ -1,0 +1,42 @@
+openapi: 3.1.0
+info:
+  title: API Interpromos
+  version: 1.0.0
+  description: |
+    API du tournoi inter-promotions de l'ISEN Nantes (BDS × club APPEN) : matchs et scores en direct,
+    classements, équipes, inscriptions, galerie et médias.
+
+    **Authentification (Espace BDS)** : les comptes sont gérés par Supabase Auth. `POST /api/auth/login`
+    renvoie un jeton d'accès Supabase (JWT, 1 h par défaut) à envoyer dans `Authorization: Bearer <jeton>`,
+    et un jeton de renouvellement pour `POST /api/auth/refresh`. Seuls les comptes dont
+    `app_metadata.role` vaut `bds` ont accès aux routes d'administration (`npm run admin:grant`).
+
+    **Identifiants** : UUID, sauf les matchs, adressés par leur code lisible (`code_match`, ex. `1-0-2`).
+    Un UUID invalide renvoie `404`.
+
+    **Limites** : corps de requête 4 Mo maximum (4,5 Mo sur Vercel) ; les médias passent par un envoi direct
+    vers Supabase Storage (`/api/media/upload-url` puis `/api/media/complete`).
+
+    **Erreurs** : toujours au format `{ "error": "message" }`, ou `{ "errors": { "champ": "message" } }`
+    pour les erreurs de validation de formulaire.
+servers:
+  - url: /
+    description: Même domaine que le site
+
+tags:
+  - name: Santé
+  - name: Authentification
+  - name: Tournoi
+    description: État global, référentiels et classements
+  - name: Matchs
+  - name: Équipes
+  - name: Inscriptions
+  - name: Galerie
+    description: Galerie publique et albums (événements datés)
+  - name: Médias
+    description: Téléversement et gestion des photos et vidéos (admin)
+  - name: Import
+  - name: Instagram
+    description: Posts et reels Instagram du BDS affichés sur le site
+
+security: []

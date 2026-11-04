@@ -1,0 +1,162 @@
+  /api/teams:
+    get:
+      tags: [Équipes]
+      summary: Liste des équipes
+      description: Équipes officielles et inscriptions validées. Sans jeton BDS, le champ `email` est retiré.
+      operationId: listTeams
+      security: [{}, { bearerAuth: [] }]
+      parameters:
+        - { name: promo, in: query, schema: { type: string, examples: [A1] } }
+        - { name: sport, in: query, schema: { type: string, examples: [Football] } }
+      responses:
+        '200':
+          description: Équipes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Team' }
+    post:
+      tags: [Équipes]
+      summary: Créer une équipe
+      operationId: createTeam
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TeamInput' }
+      responses:
+        '201': { $ref: '#/components/responses/TeamResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /api/teams/{id}:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    put:
+      tags: [Équipes]
+      summary: Modifier une équipe
+      operationId: updateTeam
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/TeamInput' }
+      responses:
+        '200': { $ref: '#/components/responses/TeamResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    delete:
+      tags: [Équipes]
+      summary: Supprimer une équipe
+      operationId: deleteTeam
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: Équipe supprimée
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  teams: { type: array, items: { $ref: '#/components/schemas/Team' } }
+                  matches: { type: array, items: { $ref: '#/components/schemas/Match' } }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/teams/{id}/max-players:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    patch:
+      tags: [Équipes]
+      summary: Modifier la capacité maximale de l'équipe
+      operationId: updateTeamMaxPlayers
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                maxPlayers: { type: integer, minimum: 1, description: Nouvelle capacité }
+                delta: { type: integer, examples: [1, -1], description: Ou variation relative }
+      responses:
+        '200': { $ref: '#/components/responses/TeamResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/teams/{id}/players:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    post:
+      tags: [Équipes]
+      summary: Ajouter un joueur
+      operationId: addTeamPlayer
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fullName]
+              properties:
+                fullName: { type: string, examples: [Prénom Nom] }
+                autoIncreaseMax: { type: boolean, default: false, description: Augmenter la capacité si l'équipe est pleine }
+      responses:
+        '201': { $ref: '#/components/responses/TeamResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/teams/{id}/players/{participantId}:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+      - name: participantId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      tags: [Équipes]
+      summary: Retirer un joueur
+      operationId: removeTeamPlayer
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200': { $ref: '#/components/responses/TeamResult' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /api/teams/{id}/players/move:
+    parameters:
+      - $ref: '#/components/parameters/Uuid'
+    post:
+      tags: [Équipes]
+      summary: Réordonner, transférer ou nommer capitaine
+      description: Une seule action par appel, selon le champ fourni (`direction`, `targetTeamId` ou `makeCaptain`).
+      operationId: moveTeamPlayer
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [participantId]
+              properties:
+                participantId: { type: string, format: uuid }
+                direction: { type: string, enum: [up, down], description: Monter ou descendre dans la liste }
+                targetTeamId: { type: string, format: uuid, description: Transférer vers cette équipe }
+                makeCaptain: { type: boolean, description: Placer le joueur en tête (capitaine) }
+      responses:
+        '200': { $ref: '#/components/responses/TeamResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  # ---------------------------------------------------------------------------
+  # Inscriptions
+  # ---------------------------------------------------------------------------
