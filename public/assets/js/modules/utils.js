@@ -6,6 +6,13 @@ export function esc(str) {
     .replace(/"/g, '&quot;');
 }
 
+// Nom d'équipe suivi de sa promo : « FC Les Bits  A1 »
+export function teamTag(name, promo) {
+  const label = String(name || promo || '').trim();
+  const showPromo = promo && label.toUpperCase() !== String(promo).toUpperCase();
+  return `${esc(label)}${showPromo ? ` <span class="promo-tag">${esc(promo)}</span>` : ''}`;
+}
+
 // Lien vers la carte (sur téléphone, ouvre l'application Google Maps)
 export function mapUrl(place) {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place)}`;
@@ -60,6 +67,12 @@ export function groupAlbumsByPeriod(albums) {
     .map(key => ({ key, label: PERIOD_LABELS[key], albums: groups[key] }));
 }
 
+// « 3 novembre à 13:00 » (heure de Paris)
+const PARIS_DATETIME = new Intl.DateTimeFormat('fr-FR', { timeZone: 'Europe/Paris', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+export function formatParisDateTime(iso) {
+  return iso ? PARIS_DATETIME.format(new Date(iso)) : '';
+}
+
 export function getAuthHeaders(extraHeaders = {}) {
   const headers = { ...extraHeaders };
   const token = sessionStorage.getItem('ip_bds_token');
@@ -69,44 +82,21 @@ export function getAuthHeaders(extraHeaders = {}) {
   return headers;
 }
 
-export function calcStandings(doneMatches, SPORTS, PROMOS, MASCOT) {
-  const st = {};
-  PROMOS.forEach(p => {
-    st[p] = { p, pts: 0, v: 0, n: 0, l: 0, per: SPORTS.map(() => 0) };
-  });
-  doneMatches.forEach(m => {
-    const [x, y] = m.scores;
-    const A = st[m.a];
-    const B = st[m.b];
-    if (!A || !B) return;
-    if (x > y) {
-      A.v++;
-      B.l++;
-      A.pts += 3;
-      if (A.per[m.si] !== undefined) A.per[m.si] += 3;
-    } else if (x < y) {
-      B.v++;
-      A.l++;
-      B.pts += 3;
-      if (B.per[m.si] !== undefined) B.per[m.si] += 3;
-    } else {
-      A.n++;
-      B.n++;
-      A.pts++;
-      B.pts++;
-      if (A.per[m.si] !== undefined) A.per[m.si]++;
-      if (B.per[m.si] !== undefined) B.per[m.si]++;
-    }
-  });
-  const rank = Object.values(st).sort((a, b) => b.pts - a.pts || b.v - a.v);
-  const max = Math.max(1, rank[0]?.pts || 0);
-  return rank.map((r, i) => ({
-    ...r,
-    pos: i + 1,
-    mascot: MASCOT[r.p] || '',
-    rec: `${r.v} · ${r.n} · ${r.l}`,
-    w: `${Math.round((r.pts / max) * 100)}%`,
-    col: i === 0 && r.pts > 0 ? 'var(--accent)' : 'var(--text)',
-    per: r.per.map(v => ({ v, col: v ? 'var(--text)' : 'var(--dim)' }))
-  }));
+/**
+ * Classement par équipe, calculé localement (secours si l'API des classements ne répond pas)
+ */
+export function calcTeamStandings(doneMatches, teams) {
+  const st = new Map(teams.map(t => [String(t.id), { id: t.id, team: t.name, p: t.p, si: t.si, sport: t.sport, pts: 0, v: 0, n: 0, l: 0 }]));
+  for (const m of doneMatches) {
+    const A = st.get(String(m.teamAId));
+    const B = st.get(String(m.teamBId));
+    if (!A || !B) continue;
+    const [x, y] = m.scores || [0, 0];
+    if (x > y) { A.v++; B.l++; A.pts += 3; }
+    else if (x < y) { B.v++; A.l++; B.pts += 3; }
+    else { A.n++; B.n++; A.pts++; B.pts++; }
+  }
+  return [...st.values()]
+    .sort((a, b) => b.pts - a.pts || b.v - a.v || a.l - b.l || String(a.team).localeCompare(String(b.team)))
+    .map((r, i) => ({ ...r, pos: i + 1 }));
 }
