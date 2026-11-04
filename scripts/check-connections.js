@@ -1,16 +1,13 @@
-// Vérifie les connexions aux outils utilisés par le site, pour un environnement donné.
-// Lecture seule : ne crée, ne modifie et ne supprime rien (utilisable sur la production).
-//
-//   CHECK_ENV=test|preview|production  environnement vérifié (défaut : test)
-//   APP_URL=https://…                  site déployé (ou serveur local) à tester, optionnel
-//   CHECK_ADMIN=1                       teste aussi la connexion BDS avec LOCAL_ADMIN_EMAIL / LOCAL_ADMIN_PASSWORD (CI uniquement)
-//
-// Usage : npm run check:connections
+
 import { pool, query } from '../backend/data/db.js';
 import { getDatabaseRole } from '../backend/data/environment.js';
 
 const ENV = (process.env.CHECK_ENV || 'test').toLowerCase();
-const IS_DEPLOYED = ENV === 'preview' || ENV === 'production';
+if (!['test', 'production'].includes(ENV)) {
+    console.error(`CHECK_ENV invalide : « ${ENV} » (valeurs possibles : test, production).`);
+    process.exit(1);
+}
+const IS_DEPLOYED = ENV === 'production';
 const APP_URL = String(process.env.APP_URL || '').replace(/\/+$/, '');
 const REQUIRED_TABLES = [
     'edition', 'promos', 'sports', 'equipes', 'participants', 'rejoindre_equipe', 'participer_sport',
@@ -111,10 +108,10 @@ async function checkDatabase() {
 
     const { rows: views } = await query(
         `SELECT relname, COALESCE(array_to_string(reloptions, ','), '') AS opts
-         FROM pg_class WHERE relkind = 'v' AND relname IN ('v_classement_sport', 'v_classement_general')`
+         FROM pg_class WHERE relkind = 'v' AND relname IN ('v_classement_equipe')`
     );
     const unsafe = views.filter(v => !v.opts.includes('security_invoker=true')).map(v => v.relname);
-    if (views.length < 2) fail(G, 'Vues de classement', 'absentes');
+    if (views.length < 1) fail(G, 'Vue de classement', 'absente');
     else if (unsafe.length) fail(G, 'Vues de classement', `pas en security_invoker : ${unsafe.join(', ')}`);
     else ok(G, 'Vues de classement', 'security_invoker');
 
@@ -124,7 +121,7 @@ async function checkDatabase() {
             `SELECT COUNT(*) FILTER (WHERE has_table_privilege('anon', c.oid, 'SELECT'))::INT AS readable
              FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
              WHERE n.nspname = current_schema() AND c.relname = ANY($1::TEXT[])`,
-            [[...REQUIRED_TABLES, 'v_classement_sport', 'v_classement_general']]
+            [[...REQUIRED_TABLES, 'v_classement_equipe']]
         );
         if (rows[0].readable) fail(G, 'API Data Supabase', `${rows[0].readable} table(s)/vue(s) lisibles par le rôle anon`);
         else ok(G, 'API Data Supabase', 'rien de lisible par le rôle anon');

@@ -1,5 +1,5 @@
-import { state, SPORTS, PROMOS, DAYS, MASCOT, EDITION, entryPage, pageFromLocation } from './modules/state.js';
-import { calcStandings } from './modules/utils.js';
+import { state, SPORTS, DAYS, MASCOT, EDITION, entryPage, pageFromLocation } from './modules/state.js';
+import { calcTeamStandings } from './modules/utils.js';
 import { verifySession, detectPasswordRecovery } from './modules/auth.js';
 import { fetchInitialState, fetchAdminMedia } from './modules/api/index.js';
 import { renderPublicHeader } from './modules/render-header.js';
@@ -48,8 +48,7 @@ function decorateStandings(rows) {
     mascot: r.mascot || MASCOT[r.p] || '',
     rec: r.rec || `${r.v} · ${r.n} · ${r.l}`,
     w: `${Math.round((r.pts / max) * 100)}%`,
-    col: i === 0 && r.pts > 0 ? R : T,
-    per: (r.per || []).map(v => ({ v, col: v ? T : 'var(--dim)' }))
+    col: i === 0 && r.pts > 0 ? R : T
   }));
 }
 
@@ -99,18 +98,16 @@ function getDerived() {
 
   const liveList = ms.filter(m => m.status === 'live').sort(byTime);
   const doneList = ms.filter(m => m.status === 'done');
-  // Classements calculés par l'API (vues SQL, coefficient de chaque sport inclus) ; calcul local seulement en secours
+  // Classements par équipe calculés par l'API (vue SQL, coefficient de chaque sport inclus) ; calcul local seulement en secours
   const api = s.standings;
-  const ranking = api?.general?.length
-    ? decorateStandings(api.general)
-    : calcStandings(doneList, SPORTS, PROMOS, MASCOT);
+  const ranking = decorateStandings(api?.general || calcTeamStandings(doneList, s.teams));
   const sportStandAll = SPORTS.map((_, si) => {
     const fromApi = api?.bySport?.find(x => x.si === si)?.standings;
-    return fromApi ? decorateStandings(fromApi) : calcStandings(doneList.filter(m => m.si === si), SPORTS, PROMOS, MASCOT);
+    return decorateStandings(fromApi || calcTeamStandings(doneList.filter(m => m.si === si), s.teams.filter(t => t.si === si)));
   });
 
   const teamsAll = s.teams.map(t => {
-    const r = sportStandAll[t.si]?.find(x => x.p === t.p) || { v: 0, n: 0, l: 0 };
+    const r = sportStandAll[t.si]?.find(x => String(x.id) === String(t.id)) || { v: 0, n: 0, l: 0 };
     return {
       ...t,
       rec: `${r.v}V ${r.n}N ${r.l}D`

@@ -59,7 +59,7 @@ import {
 import { UPLOADS_DIR, MAX_UPLOAD_BYTES } from './backend/data/media-storage.js';
 import { isUuid } from './backend/data/store.js';
 import { api_import_csv } from './backend/api/import.js';
-import { api_get_edition, api_put_edition } from './backend/api/edition.js';
+import { api_get_edition, api_put_edition, api_put_registration_settings, api_put_tv_settings } from './backend/api/edition.js';
 import {
     api_get_instagram,
     api_post_instagram,
@@ -87,6 +87,12 @@ app.use(express.static(path.join(ROOT_DIR, "public"), {
     lastModified: false,
     setHeaders: res => res.setHeader("Cache-Control", "no-store")
 }));
+
+// Écran TV des scores en direct (plein écran, pour un téléviseur ou un vidéoprojecteur)
+app.get('/tv', (request, response) => {
+    response.setHeader('Cache-Control', 'no-store');
+    response.sendFile(path.join(ROOT_DIR, 'public', 'tv.html'));
+});
 
 // Médias téléversés en local 
 app.use("/uploads", express.static(UPLOADS_DIR, {
@@ -127,6 +133,8 @@ app.get('/api/docs/openapi.yaml', requireAdminAuth, api_get_openapi);
 app.get('/api/state', api_state);
 app.get('/api/edition', api_get_edition);
 app.put('/api/edition', requireAdminAuth, api_put_edition);
+app.put('/api/edition/registrations', requireAdminAuth, api_put_registration_settings);
+app.put('/api/edition/tv', requireAdminAuth, api_put_tv_settings);
 
 // Routes API — Posts Instagram affichés sur le site
 app.get('/api/instagram', api_get_instagram);

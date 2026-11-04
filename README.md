@@ -33,8 +33,7 @@ En local, pas besoin de Supabase pour entrer dans l'Espace BDS : on se connecte 
 
 `app.js` déclare l'application Express et toutes les routes. `index.js` ne sert qu'au lancement local.
 
-La documentation de l'API (`docs/openapi.yaml`) est réservée aux membres du BDS : une fois connecté à l'Espace BDS, menu « Documentation API ».
-
+La documentation de l'API (`docs/openapi/`, un fichier par groupe de routes)
 Les tests ne tournent jamais sur la base de production : le site de production marque sa base, et la CI, `npm run db:clean`, le serveur local de test et les vérifications admin refusent ensuite de s'y connecter (voir [`scripts/`](scripts/README.md)).
 
 ## Mise en production
