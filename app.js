@@ -1,5 +1,6 @@
 import express from 'express';
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { api_ping } from './backend/api/ping.js';
@@ -89,9 +90,12 @@ app.use(express.static(path.join(ROOT_DIR, "public"), {
 }));
 
 // Écran TV des scores en direct (plein écran, pour un téléviseur ou un vidéoprojecteur)
+// Page lue une seule fois au démarrage : aucun accès disque par requête (pas de saturation possible
+// en multipliant les appels) 
+const TV_PAGE = readFileSync(new URL('./public/tv.html', import.meta.url));
 app.get('/tv', (request, response) => {
     response.setHeader('Cache-Control', 'no-store');
-    response.sendFile(path.join(ROOT_DIR, 'public', 'tv.html'));
+    response.type('html').send(TV_PAGE);
 });
 
 // Médias téléversés en local 
