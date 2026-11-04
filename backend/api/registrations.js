@@ -5,7 +5,8 @@ import {
     dbCreateRegistration,
     dbUpdateRegistrationStatus,
     dbFindRegistrationConflicts,
-    dbDeleteRegistration
+    dbDeleteRegistration,
+    dbGetEdition
 } from '../data/store.js';
 import { createRateLimit } from './rate-limit.js';
 
@@ -16,6 +17,10 @@ export const registrationRateLimit = createRateLimit({
     max: 20,
     message: 'Trop de tentatives depuis cet appareil. Réessayez dans quelques minutes.'
 });
+
+const formatParis = iso => new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
+}).format(new Date(iso));
 
 const cleanName = value => String(value || '').trim().replace(/\s+/g, ' ');
 
@@ -37,7 +42,18 @@ export async function api_get_registrations(request, response) {
 export async function api_post_registration(request, response) {
     try {
         const body = request.body || {};
-        const [sports, promos] = await Promise.all([dbGetSports(), dbGetPromos()]);
+        const [sports, promos, edition] = await Promise.all([dbGetSports(), dbGetPromos(), dbGetEdition()]);
+
+        // Inscriptions fermées par le BDS ou échéance dépassée
+        if (!edition.registrations.open) {
+            const { reason, closesAt } = edition.registrations;
+            return response.status(403).json({
+                code: 'REGISTRATIONS_CLOSED',
+                error: reason === 'manual'
+                    ? 'Les inscriptions sont fermées par le BDS.'
+                    : `Les inscriptions sont closes depuis le ${formatParis(closesAt)}.`
+            });
+        }
 
         const sportObj =
             sports.find(s => s.indice === body.sportIndex) ||

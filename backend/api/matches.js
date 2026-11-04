@@ -20,6 +20,15 @@ export async function api_get_matches(request, response) {
     }
 }
 
+// Erreurs de saisie d'un match (les équipes sont choisies une par une, chacune rattachée à sa promo)
+const MATCH_ERRORS = {
+    INVALID_SPORT: 'Sport invalide.',
+    MISSING_TEAMS: 'Choisissez les deux équipes du match.',
+    SAME_TEAM: 'Une équipe ne peut pas jouer contre elle-même.',
+    INVALID_TEAM: 'Équipe introuvable ou inscription non validée.',
+    TEAM_SPORT_MISMATCH: "Les deux équipes doivent être inscrites dans le sport du match."
+};
+
 export async function api_post_match(request, response) {
     try {
         const body = request.body || {};
@@ -27,11 +36,8 @@ export async function api_post_match(request, response) {
         const standings = await dbGetStandings();
         response.status(201).json({ match, matches, standings });
     } catch (err) {
-        if (err.message === 'SAME_PROMO') {
-            return response.status(400).json({ error: 'Une promotion ne peut pas jouer contre elle-même.' });
-        }
-        if (err.message === 'INVALID_SPORT' || err.message === 'INVALID_PROMO') {
-            return response.status(400).json({ error: 'Sport ou promotion invalide.' });
+        if (MATCH_ERRORS[err.message]) {
+            return response.status(400).json({ error: MATCH_ERRORS[err.message] });
         }
         console.error('Erreur POST /api/matches :', err);
         response.status(500).json({ error: 'Erreur lors de la création du match.' });
@@ -48,11 +54,8 @@ export async function api_put_match(request, response) {
         const standings = await dbGetStandings();
         response.json({ ...result, standings });
     } catch (err) {
-        if (err.message === 'SAME_PROMO') {
-            return response.status(400).json({ error: 'Une promotion ne peut pas jouer contre elle-même.' });
-        }
-        if (err.message === 'INVALID_SPORT' || err.message === 'INVALID_PROMO') {
-            return response.status(400).json({ error: 'Sport ou promotion invalide.' });
+        if (MATCH_ERRORS[err.message]) {
+            return response.status(400).json({ error: MATCH_ERRORS[err.message] });
         }
         console.error('Erreur PUT /api/matches/:id :', err);
         response.status(500).json({ error: 'Erreur lors de la modification du match.' });
@@ -77,9 +80,9 @@ export async function api_delete_match(request, response) {
 export async function api_generate_matches(request, response) {
     try {
         const { clearExisting } = request.body || {};
-        const { createdCount, matches } = await dbGenerateSchedule({ clearExisting: Boolean(clearExisting) });
+        const { createdCount, skippedSports, matches } = await dbGenerateSchedule({ clearExisting: Boolean(clearExisting) });
         const standings = await dbGetStandings();
-        response.json({ createdCount, matches, standings });
+        response.json({ createdCount, skippedSports, matches, standings });
     } catch (err) {
         console.error('Erreur POST /api/matches/generate :', err);
         response.status(500).json({ error: 'Erreur lors de la génération automatique des matchs.' });
