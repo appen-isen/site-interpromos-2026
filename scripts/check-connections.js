@@ -48,7 +48,9 @@ function checkEnv() {
 
     try {
         const url = new URL(process.env.DATABASE_URL);
-        const pooled = url.hostname.includes('pooler.supabase.com') && url.port === '6543';
+        const host = url.hostname.toLowerCase();
+        const isSupabasePoolerHost = host === 'pooler.supabase.com' || host.endsWith('.pooler.supabase.com');
+        const pooled = isSupabasePoolerHost && url.port === '6543';
         if (IS_DEPLOYED && !pooled) {
             warn(G, 'Pooler Supabase', `${url.hostname}:${url.port || 5432} — Vercel doit utiliser le Transaction pooler (port 6543)`);
         } else {
