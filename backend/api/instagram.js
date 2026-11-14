@@ -72,10 +72,11 @@ async function attachVideo(request, response, stored) {
  * POST /api/instagram/:id/video (admin, stockage local) — corps : le fichier vidéo brut
  */
 export async function api_upload_instagram_video(request, response) {
-    const buffer = request.body;
-    if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+    const body = request.body;
+    if (Array.isArray(body) || !Buffer.isBuffer(body) || body.length === 0) {
         return response.status(400).json({ error: 'Aucun fichier reçu.' });
     }
+    const buffer = body;
     const mime = sniffMime(buffer);
     if (!mime?.startsWith('video/')) return response.status(415).json({ error: VIDEO_FORMAT_ERROR });
     let stored;

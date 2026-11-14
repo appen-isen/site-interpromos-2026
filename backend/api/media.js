@@ -54,10 +54,11 @@ export async function api_get_media(request, response) {
  * Corps : le fichier brut. En-têtes : X-File-Name, X-Album, X-Caption (encodés avec encodeURIComponent)
  */
 export async function api_upload_media(request, response) {
-    const buffer = request.body;
-    if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+    const body = request.body;
+    if (Array.isArray(body) || !Buffer.isBuffer(body) || body.length === 0) {
         return response.status(400).json({ error: 'Aucun fichier reçu.' });
     }
+    const buffer = body;
 
     const mime = sniffMime(buffer);
     if (!mime) {
