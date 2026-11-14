@@ -78,11 +78,18 @@ export async function api_post_registration(request, response) {
         const playerCount = filledPlayers.length;
 
         const errors = {};
+
         if (!team) errors.team = 'Donnez un nom à votre équipe.';
+        
         else if (team.length > 60) errors.team = "Nom d'équipe trop long (60 caractères max).";
+        
         if (!captain) errors.captain = 'Indiquez le nom du capitaine.';
+        
         else if (captain.length > 80) errors.captain = 'Nom du capitaine trop long.';
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 120) errors.email = 'Adresse e-mail invalide.';
+        
+        if (email.length > 120 || !email.includes('@') || !email.includes('.') || email.indexOf('@') >= email.lastIndexOf('.')) {
+            errors.email = 'Adresse e-mail invalide.';
+        }
 
         const lowerPlayers = filledPlayers.map(p => p.toLowerCase());
         const duplicates = filledPlayers.filter((p, i) => lowerPlayers.indexOf(p.toLowerCase()) !== i);
