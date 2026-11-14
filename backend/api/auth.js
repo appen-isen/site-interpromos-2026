@@ -30,10 +30,16 @@ function publicSiteUrl(request) {
 
     let url = configured || fromRequest;
     if (process.env.VERCEL_ENV === 'production' && isLocalUrl(url)) {
-        console.error(`APP_URL pointe vers une adresse locale (${url}) : utilisation du domaine de production.`);
+   
+        const safeUrl = url.replace(/[\n\r]/g, '');
+        //console.error(`APP_URL pointe vers une adresse locale (${safeUrl}) : utilisation du domaine de production.`);
         url = vercelDomain || fromRequest;
     }
-    return `${url.replace(/\/+$/, '')}/`;
+    // Remove trailing slashes without regex to prevent ReDoS
+    while (url.endsWith('/')) {
+        url = url.slice(0, -1);
+    }
+    return `${url}/`;
 }
 
 const sessionResponse = ({ token, refreshToken, expiresAt, email }) =>

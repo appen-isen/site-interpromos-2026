@@ -54,7 +54,22 @@ export function getSupabaseConfig() {
 }
 
 function newFileName(ext) {
-    return `${new Date().toISOString().slice(0, 10)}-${crypto.randomBytes(8).toString('hex')}.${ext}`;
+    const date = new Date().toISOString().slice(0, 10);
+    const random = crypto.randomBytes(8).toString('hex');
+    return `${date}-${random}.${ext}`;
+}
+
+/**
+ * Sanitize filename to prevent path traversal attacks.
+ * Ensures the filename contains only safe characters (alphanumeric, dash, dot).
+ */
+function sanitizeFileName(fileName) {
+    // Allow only alphanumeric, dash, underscore, and dot
+    const sanitized = fileName.replace(/[^a-zA-Z0-9._-]/g, '');
+    if (sanitized !== fileName || !sanitized) {
+        throw new Error('INVALID_FILENAME');
+    }
+    return sanitized;
 }
 
 export function isSupabaseStorage() {
@@ -73,7 +88,8 @@ export async function createSignedUpload(mime) {
     const ext = EXTENSIONS[mime];
     if (!sb || !ext) throw new Error('UNSUPPORTED_MEDIA');
 
-    const objectPath = `galerie/${newFileName(ext)}`;
+    const fileName = sanitizeFileName(newFileName(ext));
+    const objectPath = `galerie/${fileName}`;
     const res = await fetch(`${sb.url}/storage/v1/object/upload/sign/${sb.bucket}/${objectPath}`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${sb.key}`, apikey: sb.key, 'Content-Type': 'application/json' },
@@ -137,7 +153,7 @@ export async function saveMediaFile(buffer, mime) {
     const ext = EXTENSIONS[mime];
     if (!ext) throw new Error('UNSUPPORTED_MEDIA');
 
-    const fileName = newFileName(ext);
+    const fileName = sanitizeFileName(newFileName(ext));
     const sb = getSupabaseConfig();
 
     if (sb) {
@@ -174,7 +190,7 @@ export async function deleteMediaFile(storagePath) {
     if (!storagePath) return;
 
     if (storagePath.startsWith('local:')) {
-        const fileName = path.basename(storagePath.slice('local:'.length));
+        const fileName = sanitizeFileName(path.basename(storagePath.slice('local:'.length)));
         await fs.unlink(path.join(UPLOADS_DIR, fileName)).catch(() => {});
         return;
     }
