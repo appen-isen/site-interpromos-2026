@@ -8,8 +8,15 @@ const ISSUER = 'interpromos-local';
 
 export const isConfigured = Boolean(EMAIL && PASSWORD);
 
-const digest = value => crypto.createHash('sha256').update(value).digest();
-const sameSecret = (a, b) => crypto.timingSafeEqual(digest(a), digest(b));
+const sameSecret = (a, b) => {
+    const left = Buffer.from(String(a), 'utf8');
+    const right = Buffer.from(String(b), 'utf8');
+    if (left.length !== right.length) {
+        crypto.timingSafeEqual(left, left);
+        return false;
+    }
+    return crypto.timingSafeEqual(left, right);
+};
 
 export async function login(email, password) {
     if (!sameSecret(email, EMAIL) || !sameSecret(password, PASSWORD)) return { status: 401 };
