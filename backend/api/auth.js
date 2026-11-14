@@ -33,7 +33,11 @@ function publicSiteUrl(request) {
         console.error(`APP_URL pointe vers une adresse locale (${url}) : utilisation du domaine de production.`);
         url = vercelDomain || fromRequest;
     }
-    return `${url.replace(/\/+$/, '')}/`;
+    // Remove trailing slashes without regex to prevent ReDoS
+    while (url.endsWith('/')) {
+        url = url.slice(0, -1);
+    }
+    return `${url}/`;
 }
 
 const sessionResponse = ({ token, refreshToken, expiresAt, email }) =>
