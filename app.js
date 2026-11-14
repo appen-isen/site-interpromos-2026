@@ -127,7 +127,7 @@ app.post('/api/auth/recover', loginRateLimit, api_auth_recover);
 app.post('/api/auth/password', loginRateLimit, api_auth_password);
 
 // Routes API — Import CSV (protégé par requireAdminAuth)
-app.post('/api/import/csv', requireAdminAuth, api_import_csv);
+app.post('/api/import/csv', loginRateLimit, requireAdminAuth, api_import_csv);
 
 // Routes API — Santé & État global
 app.get('/api/ping', api_ping);
